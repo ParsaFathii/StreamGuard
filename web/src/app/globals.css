@@ -1,0 +1,288 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  --font-mono: var(--font-geist-mono), "Cascadia Mono", Menlo, monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-surface-2: var(--sg-surface-2);
+  --color-surface-1: var(--sg-surface-1);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ---------------------------------------------------------------------------
+ * StreamGuard design tokens — dark-first graphite, emerald accent.
+ * Light theme supported but dark is the default (see Providers).
+ * ------------------------------------------------------------------------- */
+:root {
+  --radius: 0.375rem; /* 6px max per spec */
+  --background: #f2f6f4;
+  --foreground: #13201a;
+  --card: #ffffff;
+  --card-foreground: #13201a;
+  --popover: #ffffff;
+  --popover-foreground: #13201a;
+  --primary: #0c9d6c;
+  --primary-foreground: #ffffff;
+  --secondary: #e4ede9;
+  --secondary-foreground: #1a2b23;
+  --muted: #e4ede9;
+  --muted-foreground: #587065;
+  --accent: #dbe9e2;
+  --accent-foreground: #10201a;
+  --destructive: #e11d48;
+  --border: #d4e0da;
+  --input: #c4d4cc;
+  --ring: #10b981;
+  --chart-1: #10b981;
+  --chart-2: #2dd4bf;
+  --chart-3: #fbbf24;
+  --chart-4: #f43f5e;
+  --chart-5: #94a3b8;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #13201a;
+  --sidebar-primary: #0c9d6c;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e4ede9;
+  --sidebar-accent-foreground: #13201a;
+  --sidebar-border: #d4e0da;
+  --sidebar-ring: #10b981;
+  /* StreamGuard semantic tokens */
+  --sg-surface-1: #ffffff;
+  --sg-surface-2: #eef4f1;
+  --sg-border-strong: #c2d2ca;
+  --sg-critical: #e11d48;
+  --sg-high: #ea580c;
+  --sg-medium: #d97706;
+  --sg-low: #0d9488;
+  --sg-info: #64748b;
+}
+
+.dark {
+  --background: #0a0e0d;
+  --foreground: #e4ede9;
+  --card: #101614;
+  --card-foreground: #e4ede9;
+  --popover: #101614;
+  --popover-foreground: #e4ede9;
+  --primary: #10b981;
+  --primary-foreground: #052e22;
+  --secondary: #16201c;
+  --secondary-foreground: #c9dcd4;
+  --muted: #16201c;
+  --muted-foreground: #8ca39a;
+  --accent: #1a2622;
+  --accent-foreground: #e4ede9;
+  --destructive: #f43f5e;
+  --border: #1f2b26;
+  --input: #24312b;
+  --ring: #10b981;
+  --chart-1: #10b981;
+  --chart-2: #2dd4bf;
+  --chart-3: #fbbf24;
+  --chart-4: #f43f5e;
+  --chart-5: #94a3b8;
+  --sidebar: #0d1211;
+  --sidebar-foreground: #e4ede9;
+  --sidebar-primary: #10b981;
+  --sidebar-primary-foreground: #052e22;
+  --sidebar-accent: #16201c;
+  --sidebar-accent-foreground: #e4ede9;
+  --sidebar-border: #1f2b26;
+  --sidebar-ring: #10b981;
+  /* StreamGuard semantic tokens */
+  --sg-surface-1: #101614;
+  --sg-surface-2: #16201c;
+  --sg-border-strong: #2a3b34;
+  --sg-critical: #f43f5e;
+  --sg-high: #f97316;
+  --sg-medium: #fbbf24;
+  --sg-low: #2dd4bf;
+  --sg-info: #94a3b8;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scrollbar-gutter: stable;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 13px;
+    font-feature-settings: "tnum" 1;
+  }
+  ::selection {
+    background: #10b98140;
+  }
+  :focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 1px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Thin custom scrollbars (webkit + firefox) — SOC console density
+ * ------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sg-border-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sg-border-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a5248;
+  background-clip: padding-box;
+}
+
+/* ---------------------------------------------------------------------------
+ * StreamGuard utilities
+ * ------------------------------------------------------------------------- */
+
+/* LIVE badge / brand pulse — 2s opacity loop */
+@keyframes sg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+.sg-pulse {
+  animation: sg-pulse 2s ease-in-out infinite;
+}
+
+/* live row entrance */
+@keyframes sg-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.sg-row-in {
+  animation: sg-row-in 150ms ease-out both;
+}
+
+/* small kbd hint */
+.sg-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--sg-surface-2);
+  color: var(--muted-foreground);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* tabular mono numerals everywhere numbers are shown */
+.sg-num {
+  font-family: var(--font-geist-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* emerald brand mark */
+.sg-brand {
+  background: linear-gradient(135deg, #10b981, #0da271);
+  color: #052e22;
+}
+
+/* recharts dark polish */
+.recharts-cartesian-axis-tick text {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+.recharts-tooltip-cursor {
+  fill: #ffffff0a;
+}
+
+/* json viewer */
+.sg-json .sg-j-key {
+  color: #34d399;
+}
+.sg-json .sg-j-str {
+  color: #fcd34d;
+}
+.sg-json .sg-j-num {
+  color: #2dd4bf;
+}
+.sg-json .sg-j-bool {
+  color: #fb7185;
+}
+.sg-json .sg-j-punc {
+  color: var(--muted-foreground);
+}
+
+/* dense table */
+table.sg-table {
+  font-size: 13px;
+}
+table.sg-table th,
+table.sg-table td {
+  padding: 0.375rem 0.625rem;
+  height: auto;
+}
+table.sg-table tbody tr {
+  transition: background-color 150ms ease;
+}
