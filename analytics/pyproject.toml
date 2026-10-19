@@ -1,0 +1,37 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "streamguard-analytics"
+version = "10.3.2"
+description = "StreamGuard analytics & ML package: EWMA baselines, pure-Python Isolation Forest, deterministic labeled evaluation, AI investigation provider adapter, and sidecar HTTP server."
+readme = "README.md"
+authors = [{ name = "Parsa Fathi" }]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.12"
+dependencies = ["numpy>=1.26"]
+keywords = ["security", "analytics", "anomaly-detection", "isolation-forest", "ewma"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+[project.scripts]
+streamguard-analytics = "streamguard_analytics.__main__:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
