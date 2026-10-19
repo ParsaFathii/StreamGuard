@@ -297,6 +297,29 @@ v10.3.2 with what genuinely changed at each step). Releases are automated via
 `.github/workflows/release.yml`: a release publishes only if the full test
 suite passes and the tag matches the CHANGELOG head.
 
+## The console in motion
+
+Captured from the real running application (demo edition, simulator data —
+labeled `origin=synthetic` everywhere in the UI):
+
+| | |
+|---|---|
+| **Live attack on the event wall** — a brute-force scenario streams in over socket.io, detections and incidents appear in real time | **Incident triage** — queue → triage → investigating → investigation note, lifecycle validated server-side |
+| ![Live attack](docs/assets/demo-live-attack.gif) | ![Incident triage](docs/assets/demo-incident-triage.gif) |
+| **AI-assisted investigation** — evidence-grounded report with facts vs hypotheses vs next steps | **Bilingual console** — English ⇆ فارسی with full RTL |
+| ![AI investigation](docs/assets/demo-ai-investigation.gif) | ![Language toggle](docs/assets/demo-language-toggle.gif) |
+
+Section screenshots: [operations overview](docs/assets/01-overview.png) ·
+[live stream](docs/assets/02-live-stream.png) ·
+[event explorer](docs/assets/03-event-explorer.png) ·
+[detection rules](docs/assets/04-detection-rules.png) ·
+[incident queue](docs/assets/05-incident-queue.png) ·
+[incident investigation](docs/assets/06-incident-investigation.png) ·
+[ML analytics](docs/assets/07-ml-analytics.png) ·
+[AI assistant](docs/assets/08-ai-assistant.png) ·
+[system health](docs/assets/09-system-health.png) ·
+[ingestion sources](docs/assets/10-sources.png)
+
 ## Documentation
 
 - English: this README, `ARCHITECTURE.md`, `SECURITY.md`, `CONTRIBUTING.md`,
