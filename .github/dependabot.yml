@@ -1,0 +1,35 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /services/ingestor
+    schedule:
+      interval: weekly
+    groups:
+      go-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: pip
+    directory: /analytics
+    schedule:
+      interval: weekly
+    groups:
+      python-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      npm-deps:
+        patterns:
+          - "*"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"

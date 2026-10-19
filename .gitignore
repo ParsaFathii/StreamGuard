@@ -1,0 +1,42 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# Build artifacts
+bin/
+build/
+*.o
+*.a
+*.so
+*.exe
+*.test
+*.out
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+.venv/
+venv/
+node_modules/
+.next/
+out/
+.turbo/
+coverage/
+*.lcov
+# Local environment & secrets — NEVER commit
+.env
+.env.*
+*.pem
+*.key
+secrets/
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+db/*.db
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+# Logs
+*.log
+logs/
