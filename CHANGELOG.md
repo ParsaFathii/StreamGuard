@@ -30,6 +30,15 @@ Final maintenance release — release audit fixes and version unification.
   runs (timing noise, not results, was failing the diff).
 - `.gitleaks.toml`: allowlist for the intentional, documented demo credentials
   and test-fixture strings; real secret patterns still fail the scan.
+- PostgreSQL store bugs found by the CI integration job (invisible to the
+  memstore unit tests): `QueryEvents` emitted `LIMIT` inside the `WHERE`
+  clause (invalid SQL) and `IncidentEvents` used unqualified columns in its
+  join (ambiguous `event_id`) — both fixed and covered by the integration
+  suite in CI.
+- Security toolchain hardening: Go 1.26.9 (stdlib net/http GO-2026-6617),
+  pgx v5.11.0, x/text v0.43.0, x/crypto v0.58.0 — `govulncheck ./...` now
+  exits clean. Web container image pinned to bun 1.3 (bun 1.1 cannot parse
+  the Next 16 Turbopack runtime chunk; the same build is green under 1.3).
 
 ## [10.3.1] — 2026-10-19
 

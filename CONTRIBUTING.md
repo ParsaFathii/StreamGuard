@@ -28,7 +28,7 @@ Copyright © 2026 Parsa Fathi. Contributions are licensed under Apache-2.0.
 
 ## Development environment
 
-Requirements: Go 1.23+, Python 3.12+, a C++20 compiler (GCC 12+/Clang 16+),
+Requirements: Go 1.26+ (go.mod pins the toolchain), Python 3.12+, a C++20 compiler (GCC 12+/Clang 16+),
 Bun 1.1+ for the web console.
 
 ```bash

@@ -54,7 +54,7 @@ Event Sources ──▶ Ingestion API ──▶ Validation ──▶ Processing 
 
 ## Prerequisites
 
-- **Full stack deployment:** Docker + Docker Compose (easiest), or: Go 1.23+,
+- **Full stack deployment:** Docker + Docker Compose (easiest), or: Go 1.26+ (toolchain pinned in go.mod),
   PostgreSQL 16+, Python 3.12+, Bun 1.1+ (for the console), a C++20 compiler
   (only if you build the native parser).
 - **Console demo edition only:** Bun 1.1+ (SQLite is embedded — no external
