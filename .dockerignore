@@ -1,0 +1,23 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# Keep container build contexts small and reproducible.
+.git
+.github
+node_modules
+**/node_modules
+.next
+**/.next
+**/dist
+**/build
+**/bin
+db
+**/db/*.db
+*.db
+analytics/build
+analytics/dist
+native/parser/build
+docs
+*.log
+.env
+.env.*
+VERSION
+docker-compose.yml

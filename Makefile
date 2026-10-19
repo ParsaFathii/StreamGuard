@@ -69,3 +69,17 @@ clean:
 	cd services/ingestor && rm -rf bin
 	cd native/parser && make clean
 	rm -rf analytics/build analytics/dist
+
+dist: build
+	@set -e; mkdir -p dist; \
+	  cd services/ingestor; \
+	  for os_arch in "linux amd64" "linux arm64" "darwin amd64" "darwin arm64"; do \
+	    set -- $$os_arch; \
+	    CGO_ENABLED=0 GOOS=$$1 GOARCH=$$2 $(GO) build -trimpath -ldflags="-s -w" -o ../../dist/sg-ingestor-$$1-$$2 ./cmd/ingestor; \
+	    CGO_ENABLED=0 GOOS=$$1 GOARCH=$$2 $(GO) build -trimpath -ldflags="-s -w" -o ../../dist/sggen-$$1-$$2 ./cmd/sggen; \
+	  done; \
+	  cd ../../native/parser && make all; \
+	  mkdir -p ../../dist/native && cp build/libsgparser.a build/libsgcapi.so README.md ../../dist/native/; \
+	  cd ../../analytics && $(PY) -m pip install --quiet build && $(PY) -m build --sdist --outdir ../../dist; \
+	  cd .. && sha256sum dist/* dist/native/* 2>/dev/null | sed 's|dist/||' > dist/SHA256SUMS.txt; \
+	  echo "dist artifacts:"; ls -la dist/
