@@ -1,0 +1,23 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# StreamGuard Console (Next.js web application)
+FROM oven/bun:1.1 AS deps
+WORKDIR /app
+COPY web/package.json ./
+RUN bun install
+
+FROM oven/bun:1.1 AS build
+WORKDIR /app
+ARG NEXT_PUBLIC_API_BASE=""
+ARG NEXT_PUBLIC_LIVE_TRANSPORT="sse"
+ENV NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
+ENV NEXT_PUBLIC_LIVE_TRANSPORT=${NEXT_PUBLIC_LIVE_TRANSPORT}
+COPY --from=deps /app/node_modules ./node_modules
+COPY web/ ./
+RUN bun run db:generate && bunx next build
+
+FROM oven/bun:1.1 AS run
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app ./
+EXPOSE 3000
+CMD ["bun", "run", "start"]

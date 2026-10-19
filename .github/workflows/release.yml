@@ -1,0 +1,121 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# StreamGuard release — full validation, artifacts, checksums, SBOM, GitHub Release.
+# Publishes only when all required checks pass.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: Validate tag + full test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches CHANGELOG head
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          HEAD=$(grep -m1 '^## ' CHANGELOG.md | sed 's/^## \[\(.*\)\].*/\1/')
+          echo "tag=$TAG changelog-head=$HEAD"
+          test "$TAG" = "$HEAD"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: services/ingestor/go.sum
+      - name: Go tests
+        run: cd services/ingestor && go vet ./... && go test ./... -race -count=1
+      - name: C++ tests + sanitizers
+        run: cd native/parser && make all && make test && make sanitize
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python tests
+        run: cd analytics && pip install -e . && pip install pytest && python -m pytest tests/ -q
+      - uses: oven-sh/setup-bun@v2
+      - name: Web lint + typecheck
+        run: cd web && bun install && bun run db:generate && bun run lint && bunx tsc --noEmit
+
+  artifacts:
+    name: Build release artifacts
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: services/ingestor/go.sum
+      - name: Go binaries (multi-platform)
+        run: |
+          cd services/ingestor
+          mkdir -p /tmp/dist
+          for os_arch in "linux amd64" "linux arm64" "darwin amd64" "darwin arm64"; do
+            set -- $os_arch
+            CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -trimpath -ldflags="-s -w" \
+              -o /tmp/dist/sg-ingestor-${1}-${2} ./cmd/ingestor
+            CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -trimpath -ldflags="-s -w" \
+              -o /tmp/dist/sggen-${1}-${2} ./cmd/sggen
+          done
+      - name: C++ parser artifacts
+        run: |
+          cd native/parser
+          make all
+          mkdir -p /tmp/dist/native
+          cp build/libsgparser.a build/libsgcapi.so /tmp/dist/native/
+          cp README.md /tmp/dist/native/PARSER_README.md
+      - name: Python sdist
+        run: |
+          cd analytics
+          pip install build
+          python -m build --sdist --outdir /tmp/dist
+      - name: Checksums
+        run: |
+          cd /tmp/dist
+          sha256sum * > SHA256SUMS.txt 2>/dev/null || true
+          find . -type f ! -name SHA256SUMS.txt -exec sha256sum {} \; > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          artifact-name: sbom-spdx.json
+          upload-artifact: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: /tmp/dist/
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, artifacts]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: sbom-spdx.json
+          path: dist
+      - name: Extract release notes
+        run: |
+          awk -v ver="${GITHUB_REF_NAME#v}" '
+            $0 == "## ["ver"]" {p=1; next}
+            p && /^## \[/ {exit}
+            p {print}
+          ' CHANGELOG.md > /tmp/notes.md
+          head -5 /tmp/notes.md
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: /tmp/notes.md
+          files: |
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

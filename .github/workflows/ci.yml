@@ -1,0 +1,209 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# StreamGuard CI — build, test, sanitize, security. Parallel jobs per component.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go — vet, build, tests (race)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ingestor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: services/ingestor/go.sum
+      - name: Vet
+        run: go vet ./...
+      - name: Build
+        run: go build ./...
+      - name: Unit + API tests (race)
+        run: go test ./... -race -count=1
+      - name: Regression (count=2)
+        run: go test ./... -count=2
+
+  go-postgres:
+    name: Go — PostgreSQL integration
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ingestor
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sg
+          POSTGRES_PASSWORD: sg
+          POSTGRES_DB: sg
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sg" --health-interval 5s
+          --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: services/ingestor/go.sum
+      - name: Integration tests
+        run: go test -tags integration -count=1 ./internal/store/...
+        env:
+          POSTGRES_DSN: postgres://sg:sg@localhost:5432/sg?sslmode=disable
+
+  cpp:
+    name: C++ — parser tests + sanitizers
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native/parser
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compiler
+        run: g++ --version
+      - name: Build
+        run: make all
+      - name: Tests
+        run: make test
+      - name: Sanitizers (ASan+UBSan)
+        run: make sanitize
+      - name: Benchmark (informational)
+        run: make bench || true
+
+  python:
+    name: Python — analytics tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: analytics
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: pip install -e . && pip install pytest
+      - name: Determinism check (run twice, compare)
+        run: |
+          python -m pytest tests/ -q > run1.txt; tail -1 run1.txt
+          python -m pytest tests/ -q > run2.txt; tail -1 run2.txt
+          diff run1.txt run2.txt && echo "DETERMINISTIC: identical results"
+      - name: CLI evaluation smoke
+        run: python -m streamguard_analytics evaluate --dataset clean_baseline
+
+  web:
+    name: Web console — lint + typecheck + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install
+      - name: Prisma client
+        run: bun run db:generate
+      - name: Lint
+        run: bun run lint
+      - name: Type check
+        run: bunx tsc --noEmit
+      - name: Production build
+        run: bun run build
+        env:
+          DATABASE_URL: "file:./db/console.db"
+
+  security:
+    name: Security — vuln + secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: false
+      - name: Go vulnerability check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          cd services/ingestor && govulncheck ./...
+      - name: Python dependency audit (non-blocking)
+        run: |
+          pip install pip-audit
+          cd analytics && pip-audit --strict || echo "::warning::pip-audit findings (review)"
+        continue-on-error: true
+      - name: Web dependency audit (non-blocking)
+        run: |
+          cd web && bun install
+          bun audit || echo "::warning::bun audit findings (review)"
+        continue-on-error: true
+
+  containers:
+    name: Containers — build images
+    runs-on: ubuntu-latest
+    needs: [go, python]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ingestor image
+        run: docker build -f deploy/docker/Dockerfile.ingestor -t streamguard-ingestor:ci .
+      - name: Build analytics image
+        run: docker build -f deploy/docker/Dockerfile.analytics -t streamguard-analytics:ci .
+      - name: Build web image
+        run: docker build -f deploy/docker/Dockerfile.web -t streamguard-web:ci .
+
+  e2e:
+    name: E2E — ingest → detect → incident (real process)
+    runs-on: ubuntu-latest
+    needs: [go]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache-dependency-path: services/ingestor/go.sum
+      - name: Build
+        run: |
+          cd services/ingestor
+          go build -o /tmp/ingestor ./cmd/ingestor
+          go build -o /tmp/sggen ./cmd/sggen
+      - name: Run service (memory store)
+        run: |
+          PORT=8091 INGEST_KEY=sg-demo-ingest-key-2026 /tmp/ingestor &
+          sleep 2
+          curl -sf http://127.0.0.1:8091/api/health
+      - name: Generate brute-force traffic
+        run: |
+          /tmp/sggen --scenario brute_force --url http://127.0.0.1:8091 --key sg-demo-ingest-key-2026
+          sleep 2
+      - name: Verify detection + incident exist
+        run: |
+          curl -sf -c /tmp/cj -X POST http://127.0.0.1:8091/api/auth/login \
+            -H 'content-type: application/json' \
+            -d '{"username":"admin","password":"admin123"}' > /dev/null
+          DET=$(curl -sf -b /tmp/cj "http://127.0.0.1:8091/api/detections?ruleId=SG-RULE-001" | python3 -c 'import json,sys;print(len(json.load(sys.stdin)["data"]))')
+          INC=$(curl -sf -b /tmp/cj "http://127.0.0.1:8091/api/incidents" | python3 -c 'import json,sys;print(len(json.load(sys.stdin)["data"]))')
+          echo "detections=$DET incidents=$INC"
+          test "$DET" -ge 1 && test "$INC" -ge 1

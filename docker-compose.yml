@@ -1,0 +1,81 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+#
+# StreamGuard — full reference stack:
+#   postgres :5432  persistent store
+#   ingestor :8080  Go ingestion/processing/API service (SSE live stream)
+#   analytics:8090  Python ML sidecar (baselines, isolation forest, evaluation)
+#   web      :3000  StreamGuard Console (Next.js) pointed at the Go API
+#
+# Usage:
+#   docker compose up --build
+#   open http://localhost:3000  (console, Go-backed mode)
+#   open http://localhost:8080/api/health
+#
+# Demo credentials (seed users): admin/admin123, analyst/analyst123, viewer/viewer123
+# Demo ingest key: sg-demo-ingest-key-2026
+name: streamguard
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: streamguard
+      POSTGRES_PASSWORD: streamguard
+      POSTGRES_DB: streamguard
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U streamguard -d streamguard"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5432:5432"
+
+  ingestor:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.ingestor
+    environment:
+      PORT: "8080"
+      POSTGRES_DSN: "postgres://streamguard:streamguard@postgres:5432/streamguard?sslmode=disable"
+      SESSION_SECRET: "change-me-in-production"
+      INGEST_KEY: "sg-demo-ingest-key-2026"
+      LLM_BASE_URL: "http://host.docker.internal:11434"
+      LLM_MODEL: "llama3.2"
+      RATE_LIMIT_PER_MIN: "60"
+      MAX_BATCH: "100"
+      RETENTION_HOURS: "72"
+      CORRELATION_WINDOW_SECONDS: "600"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  analytics:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.analytics
+    environment:
+      ANALYTICS_PORT: "8090"
+    ports:
+      - "8090:8090"
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_BASE: "http://localhost:8080"
+        NEXT_PUBLIC_LIVE_TRANSPORT: "sse"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "file:/app/db/console.db"
+    depends_on:
+      - ingestor
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

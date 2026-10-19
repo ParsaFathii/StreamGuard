@@ -1,0 +1,17 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# StreamGuard Go ingestion service — multi-stage build
+FROM golang:1.23-alpine AS build
+WORKDIR /src
+COPY services/ingestor/go.mod services/ingestor/go.sum ./
+RUN go mod download
+COPY services/ingestor/ ./
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/ingestor ./cmd/ingestor \
+ && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/sggen ./cmd/sggen
+
+FROM alpine:3.20
+RUN addgroup -S sg && adduser -S sg -G sg
+COPY --from=build /out/ingestor /usr/local/bin/ingestor
+COPY --from=build /out/sggen /usr/local/bin/sggen
+USER sg
+EXPOSE 8080
+ENTRYPOINT ["ingestor"]

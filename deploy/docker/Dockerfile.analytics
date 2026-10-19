@@ -1,0 +1,17 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# StreamGuard Python analytics sidecar
+FROM python:3.12-slim AS build
+WORKDIR /src
+COPY analytics/pyproject.toml ./
+COPY analytics/src ./src
+COPY analytics/README.md ./
+RUN pip install --no-cache-dir --prefix /install .
+
+FROM python:3.12-slim
+RUN addgroup --system sg && adduser --system sg --ingroup sg
+COPY --from=build /install /usr/local
+USER sg
+ENV ANALYTICS_PORT=8090
+EXPOSE 8090
+HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8090/health')" || exit 1
+CMD ["python", "-m", "streamguard_analytics", "serve"]
