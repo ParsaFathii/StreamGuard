@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS ai_reports (
     incident_id     TEXT NOT NULL REFERENCES incidents(id) ON DELETE CASCADE,
     provider_status TEXT NOT NULL DEFAULT '',
     ts              TIMESTAMPTZ NOT NULL,
-    report          JSONB NOT NULL DEFAULT '{}'
+    report          TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_ai_incident ON ai_reports (incident_id, ts);
 

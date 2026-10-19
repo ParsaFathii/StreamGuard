@@ -115,7 +115,10 @@ func dup(err error) error {
 
 // coalesce renders "COALESCE(col, <sentinel>) AS col".
 func coalesce(col string) string {
-	return fmt.Sprintf("COALESCE(%s, %s) AS %s", col, zeroSentinel, col)
+	// No AS alias: function-call columns like max(ingest_time) cannot be
+	// aliased unquoted (invalid SQL, caught by the PostgreSQL integration
+	// suite), and every caller scans positionally.
+	return fmt.Sprintf("COALESCE(%s, %s)", col, zeroSentinel)
 }
 
 // attrsJSON marshals an attribute map ("null" for nil).
@@ -1167,7 +1170,7 @@ func (p *PostgresStore) InsertAIReport(ctx context.Context, ar *AIReport) error 
 // ListAIReports implements Store (oldest first).
 func (p *PostgresStore) ListAIReports(ctx context.Context, incidentID string) ([]AIReport, error) {
 	rows, err := p.pool.Query(ctx,
-		"SELECT id, incident_id, provider_status, "+coalesce("ts")+", COALESCE(report,'{}'::jsonb) FROM ai_reports WHERE incident_id=$1 ORDER BY ts ASC, id ASC", incidentID)
+		"SELECT id, incident_id, provider_status, "+coalesce("ts")+", COALESCE(report,'{}') FROM ai_reports WHERE incident_id=$1 ORDER BY ts ASC, id ASC", incidentID)
 	if err != nil {
 		return nil, err
 	}
