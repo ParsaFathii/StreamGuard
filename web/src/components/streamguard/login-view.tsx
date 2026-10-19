@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { api, ApiError } from "@/lib/api-client";
 import type { SessionUser } from "@/lib/types";
+import { useUiStore } from "@/lib/store";
 import { useT } from "./primitives";
 
 const DEMO_ACCOUNTS = [
@@ -19,7 +20,7 @@ const DEMO_ACCOUNTS = [
   { username: "viewer", password: "viewer123", role: "VIEWER" as const, descKey: "login.viewerDesc" },
 ];
 
-export function LoginView() {
+export function LoginView({ expired = false }: { expired?: boolean }) {
   const T = useT();
   const qc = useQueryClient();
   const [username, setUsername] = useState("");
@@ -32,6 +33,7 @@ export function LoginView() {
     setError(null);
     try {
       const res = await api.login(u, p);
+      useUiStore.getState().setSessionExpired(false);
       qc.setQueryData<{ user: SessionUser }>(["session"], res);
       qc.invalidateQueries();
     } catch (err) {
@@ -96,6 +98,12 @@ export function LoginView() {
                 required
               />
             </div>
+        {expired && !error && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-300" role="status">
+            {T("login.sessionExpired")}
+          </div>
+        )}
+
           </div>
 
           {error && (

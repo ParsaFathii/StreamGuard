@@ -57,6 +57,7 @@ export const fa: Dict = {
     viewerDesc: "فقط مشاهده",
     notice: "محیط نمایشی — صرفاً داده‌های ساختگی. نشست‌ها کوکی سطح دمو هستند.",
     failed: "ورود ناموفق بود",
+    sessionExpired: "نشست منقضی شده است — دوباره وارد شوید.",
     sessionCheck: "در حال بررسی نشست…",
   },
   topbar: {

@@ -82,6 +82,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* non-JSON error body */
     }
+    // Expired/invalid authentication: stop retrying server data and let the
+    // session gate drop back to the login view (queryClient default retry=0
+    // for 401s is configured in providers; this marker makes it observable).
+    if (res.status === 401) {
+      const s = useUiStore.getState();
+      if (typeof s.setSessionExpired === "function") s.setSessionExpired(true);
+    }
     throw new ApiError(code, message, res.status);
   }
 

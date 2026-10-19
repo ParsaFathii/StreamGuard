@@ -103,7 +103,7 @@ func run() error {
 	pipe.Start(ctx)
 
 	// --- LLM provider (Ollama-compatible; AI is optional and read-only).
-	llmClient := llm.NewClient(cfg.LLMBaseURL, cfg.LLMModel, 45*time.Second)
+	llmClient := llm.NewClient(cfg.LLMBaseURL, cfg.LLMModel, time.Duration(cfg.LLMTimeoutSeconds)*time.Second)
 
 	srv := api.NewServer(api.Config{
 		Version: config.Version,

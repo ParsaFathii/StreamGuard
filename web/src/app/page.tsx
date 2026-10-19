@@ -5,6 +5,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { LoginView } from "@/components/streamguard/login-view";
+import { useUiStore } from "@/lib/store";
 import { AppShell } from "@/components/streamguard/app-shell";
 
 function Splash({ label }: { label: string }) {
@@ -27,13 +28,15 @@ export default function Page() {
     refetchOnWindowFocus: true,
   });
 
+  const sessionExpired = useUiStore((s) => s.sessionExpired);
+
   if (session.isLoading) {
     return <Splash label="…" />;
   }
 
   // 401 (or API unreachable) → login view
-  if (session.isError || !session.data?.user) {
-    return <LoginView />;
+  if (session.isError || !session.data?.user || sessionExpired) {
+    return <LoginView expired={sessionExpired && !session.isError} />;
   }
 
   return <AppShell user={session.data.user} />;

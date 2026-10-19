@@ -56,6 +56,7 @@ export const en = {
     viewerDesc: "Read-only visibility",
     notice: "Demo environment — synthetic data only. Sessions are demo-grade cookies.",
     failed: "Sign-in failed",
+    sessionExpired: "Session expired — please sign in again.",
     sessionCheck: "Checking session…",
   },
   topbar: {

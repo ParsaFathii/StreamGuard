@@ -31,6 +31,7 @@ type Config struct {
         CorrelationWindowSeconds  int    // CORRELATION_WINDOW_SECONDS (default 600)
         LLMBaseURL                string // LLM_BASE_URL (default http://127.0.0.1:11434)
         LLMModel                  string // LLM_MODEL (default llama3.2)
+        LLMTimeoutSeconds         int    // LLM_TIMEOUT (default 45; per-request LLM call budget)
 
         // diagnostics only (used by Redacted, never expose values)
         ephemeralSecret   bool
@@ -51,6 +52,7 @@ func Load() (*Config, error) {
                 CorrelationWindowSeconds: envInt("CORRELATION_WINDOW_SECONDS", 600),
                 LLMBaseURL:               strings.TrimSpace(os.Getenv("LLM_BASE_URL")),
                 LLMModel:                 strings.TrimSpace(os.Getenv("LLM_MODEL")),
+                LLMTimeoutSeconds:        envInt("LLM_TIMEOUT", 45),
         }
         if c.SessionSecret == "" {
                 // Generate an ephemeral secret; sessions will not survive restarts

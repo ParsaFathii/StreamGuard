@@ -15,11 +15,13 @@ echo "==> C++: build + tests + sanitizers"
 ( cd native/parser && make all && make test && make sanitize ) || fail "C++ suite"
 
 echo "==> Python: tests + determinism check"
+# Strip wall-clock durations before comparing — determinism is about results.
+strip_dur() { sed -E 's/ in [0-9]+\.[0-9]+s$//; s/^[0-9]+\.[0-9]+s//' "$1"; }
 ( cd analytics && \
   python3 -m pytest tests/ -q > /tmp/sg-py1.txt && tail -1 /tmp/sg-py1.txt && \
   python3 -m pytest tests/ -q > /tmp/sg-py2.txt && \
-  diff /tmp/sg-py1.txt /tmp/sg-py2.txt ) || fail "Python suite"
-echo "    deterministic: identical results across runs"
+  diff <(strip_dur /tmp/sg-py1.txt) <(strip_dur /tmp/sg-py2.txt) ) || fail "Python suite"
+echo "    deterministic: identical results across runs (durations stripped)"
 
 echo "==> Web: lint + typecheck"
 ( cd web && bun run lint && bunx tsc --noEmit ) || fail "Web suite"

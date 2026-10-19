@@ -50,6 +50,8 @@ interface UiState {
   investigateIncidentId: string | null;
   /** focus flag consumed by Event Explorer when "/" is pressed */
   focusEventsSearch: boolean;
+  /** set by the API client when any request returns 401 (expired session) */
+  sessionExpired: boolean;
   setSection: (s: SectionId) => void;
   setLang: (l: Lang) => void;
   setWsStatus: (s: WsStatus) => void;
@@ -59,6 +61,7 @@ interface UiState {
   setLiveStats: (s: LiveStats | null) => void;
   openIncident: (id: string) => void;
   setFocusEventsSearch: (v: boolean) => void;
+  setSessionExpired: (v: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -73,6 +76,7 @@ export const useUiStore = create<UiState>()(
       liveStats: null,
       investigateIncidentId: null,
       focusEventsSearch: false,
+      sessionExpired: false,
       setSection: (s) => set({ activeSection: s, focusEventsSearch: false }),
       setLang: (l) => set({ lang: l }),
       setWsStatus: (s) => set({ wsStatus: s }),
@@ -83,6 +87,7 @@ export const useUiStore = create<UiState>()(
       openIncident: (id) =>
         set({ investigateIncidentId: id, activeSection: "investigate", focusEventsSearch: false }),
       setFocusEventsSearch: (v) => set({ focusEventsSearch: v }),
+      setSessionExpired: (v) => set({ sessionExpired: v }),
     }),
     {
       name: "sg-ui",
