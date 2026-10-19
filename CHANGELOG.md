@@ -22,6 +22,14 @@ Final maintenance release — release audit fixes and version unification.
   no secrets or credentials in the tree (demo credentials are labeled as such);
   `.gitignore`/`.dockerignore` cover build outputs, local databases and env
   files.
+- Fixed a real TOCTOU race in the rule engine found by CI (flaky
+  `TestDuplicateProcessingIsIdempotent`): the cooldown check and detection
+  insert are now one atomic section per engine (6/6 stress runs green under
+  `-race`; full suite green).
+- CI determinism check now strips wall-clock durations before comparing pytest
+  runs (timing noise, not results, was failing the diff).
+- `.gitleaks.toml`: allowlist for the intentional, documented demo credentials
+  and test-fixture strings; real secret patterns still fail the scan.
 
 ## [10.3.1] — 2026-10-19
 

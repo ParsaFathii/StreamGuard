@@ -356,18 +356,23 @@ func (e *Engine) maybeFire(ctx context.Context, r *store.Rule, key string, group
 }
 
 func (e *Engine) maybeFireWithTrigger(ctx context.Context, r *store.Rule, key string, group []event.Event, now time.Time, trigger string) (*Result, error) {
-        // Cooldown check: same rule + correlation key.
+        // The cooldown check + detection insert must be atomic per engine: two
+        // workers processing overlapping batches could otherwise both pass the
+        // "no recent detection" check and both insert (TOCTOU race, found by
+        // TestDuplicateProcessingIsIdempotent under CI load). The engine mutex
+        // serializes check-and-fire; the store queries inside are indexed+fast.
+        e.mu.Lock()
+        defer e.mu.Unlock()
         last, err := e.st.LastDetectionAtByRuleKey(ctx, r.ID)
         if err != nil {
                 return nil, fmt.Errorf("cooldown query: %w", err)
         }
         if t, ok := last[key]; ok && r.CooldownSeconds > 0 && now.Sub(t) < time.Duration(r.CooldownSeconds)*time.Second {
                 if r.Suppression {
-                        e.mu.Lock()
+                        // caller holds e.mu (atomic check-and-fire section)
                         if len(e.suppressed) < maxSuppressed {
                                 e.suppressed[r.ID+"|"+key]++
                         }
-                        e.mu.Unlock()
                 }
                 return nil, nil
         }

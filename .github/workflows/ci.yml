@@ -97,11 +97,12 @@ jobs:
           python-version: "3.12"
       - name: Install package
         run: pip install -e . && pip install pytest
-      - name: Determinism check (run twice, compare)
+      - name: Determinism check (run twice, compare; durations stripped)
         run: |
+          strip_dur() { sed -E 's/ in [0-9]+\.[0-9]+s$//; s/^[0-9]+\.[0-9]+s//' "$1"; }
           python -m pytest tests/ -q > run1.txt; tail -1 run1.txt
           python -m pytest tests/ -q > run2.txt; tail -1 run2.txt
-          diff run1.txt run2.txt && echo "DETERMINISTIC: identical results"
+          diff <(strip_dur run1.txt) <(strip_dur run2.txt) && echo "DETERMINISTIC: identical results"
       - name: CLI evaluation smoke
         run: python -m streamguard_analytics evaluate --dataset clean_baseline
 

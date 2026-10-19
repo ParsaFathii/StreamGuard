@@ -1,0 +1,29 @@
+# Copyright © 2026 Parsa Fathi — Apache-2.0
+# Gitleaks configuration.
+#
+# StreamGuard ships INTENTIONAL, DOCUMENTED demo credentials (see README
+# "Sign in with demo users" and SECURITY.md "Scope notes"): demo passwords
+# (admin123/analyst123/viewer123), the demo ingest key (sg-demo-ingest-key-2026)
+# and test fixtures with fake DSNs/keys. They are evaluation-only, labeled as
+# demo-grade everywhere they appear, and are NOT secrets. Real secrets must
+# never be committed; anything matching real secret patterns will still fail
+# this scan.
+title = "StreamGuard gitleaks config (demo credentials allowlisted)"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional demo/evaluation credentials and test fixtures"
+regexes = [
+  '''sg-demo-ingest-key-2026''',
+  '''admin123|analyst123|viewer123''',
+  '''postgres://sg:sg@''',
+  '''postgres://streamguard:streamguard@''',
+  '''change-me-in-production''',
+  '''SESSION_SECRET_FOR_TESTS''',
+  '''0123456789abcdef''',
+]
+paths = [
+  '''(^|/)docs/assets/.*\.(png|gif)$''',
+]
