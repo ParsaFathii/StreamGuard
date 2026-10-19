@@ -117,5 +117,6 @@ jobs:
           body_path: /tmp/notes.md
           files: |
             dist/*
+            dist/native/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
