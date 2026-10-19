@@ -69,3 +69,35 @@ export async function setRetentionState(state: RetentionState): Promise<void> {
     update: { value: JSON.stringify(merged) },
   })
 }
+
+// ---- backup bookkeeping (Setting key "backup") — mirrors the retention state pattern ----
+
+export interface BackupState {
+  lastRunAt?: string
+  lastResult?: {
+    ok: boolean
+    file?: string
+    sizeBytes?: number
+    durationMs?: number
+    error?: string
+  }
+}
+
+export async function getBackupState(): Promise<BackupState> {
+  try {
+    const row = await db.setting.findUnique({ where: { key: 'backup' } })
+    if (!row) return {}
+    return JSON.parse(row.value) as BackupState
+  } catch {
+    return {}
+  }
+}
+
+export async function setBackupState(state: BackupState): Promise<void> {
+  const merged = { ...(await getBackupState()), ...state }
+  await db.setting.upsert({
+    where: { key: 'backup' },
+    create: { key: 'backup', value: JSON.stringify(merged) },
+    update: { value: JSON.stringify(merged) },
+  })
+}

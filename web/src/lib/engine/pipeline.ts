@@ -15,6 +15,7 @@ import { compactEvent, notify, queueEventNotifications } from '@/lib/engine/noti
 import { markLastEvent, countDuplicates } from '@/lib/engine/proc-stats'
 import { toStored, type EngineCtx, type StoredEvent } from '@/lib/engine/types'
 import { maybeRunRetention } from '@/lib/engine/retention'
+import { maybeRunBackup } from '@/lib/engine/backups'
 import { withEngineLock } from '@/lib/engine/lock'
 
 export interface IngestOptions {
@@ -237,8 +238,12 @@ async function ingestEventsInner(raws: unknown[], opts: IngestOptions = {}): Pro
   }
   if (result.duplicates > 0) countDuplicates(result.duplicates)
 
-  // 8) automatic retention check (at most every 5 min, triggered by ingest)
-  if (doNotify) maybeRunRetention()
+  // 8) automatic maintenance checks (retention: at most every 5 min;
+  //    backups: at most once per 24 h, both triggered by ingest)
+  if (doNotify) {
+    maybeRunRetention()
+    maybeRunBackup()
+  }
 
   return result
 }

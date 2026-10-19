@@ -2,9 +2,10 @@
 // Copyright © 2026 Parsa Fathi — Apache-2.0
 import { NextResponse, type NextRequest } from 'next/server'
 
-export const API_VERSION = '10.3.2'
+export const API_VERSION = '10.4.0'
 
-function versionHeaders(extra?: Record<string, string>): Record<string, string> {
+/** Version header set for all responses; raw (non-JSON) responses such as CSV exports use it directly. */
+export function versionHeaders(extra?: Record<string, string>): Record<string, string> {
   return { 'X-StreamGuard-Version': API_VERSION, ...(extra ?? {}) }
 }
 

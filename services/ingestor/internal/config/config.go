@@ -16,7 +16,7 @@ import (
 
 // Version is the StreamGuard product version surfaced via
 // X-StreamGuard-Version and /api/health.
-const Version = "10.3.2"
+const Version = "10.4.0"
 
 // Config holds all runtime configuration for the ingestor service.
 type Config struct {

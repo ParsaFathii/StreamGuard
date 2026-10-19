@@ -25,6 +25,10 @@ import { useUiStore } from "@/lib/store";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
+/** True when the console talks to its own Next.js backend (demo edition).
+ * Used to gate console-edition-only features (exports, backups, simulator). */
+export const IS_CONSOLE_EDITION = BASE === "";
+
 export class ApiError extends Error {
   code: string;
   status: number;
@@ -113,6 +117,60 @@ function asArray<T>(res: unknown): T[] {
     if (Array.isArray(r.sources)) return r.sources as T[];
   }
   return [];
+}
+
+/** Build a query string for download URLs (same semantics as qs()). */
+function downloadQs(params: Record<string, string | number | boolean | undefined | null>): string {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    sp.set(k, String(v));
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+}
+
+/** Fetch a file download (export endpoints) and trigger the browser save dialog. */
+export async function downloadFile(
+  path: string,
+): Promise<{ filename: string; bytes: number; count: number | null }> {
+  const res = await fetch(`${BASE}${path}`, { credentials: "include" });
+  if (!res.ok) {
+    let code = `HTTP_${res.status}`;
+    let message = res.statusText || "download failed";
+    try {
+      const body = (await res.json()) as { error?: { code?: string; message?: string } };
+      if (body?.error?.code) code = body.error.code;
+      if (body?.error?.message) message = body.error.message;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(code, message, res.status);
+  }
+  const blob = await res.blob();
+  const cd = res.headers.get("content-disposition") ?? "";
+  const m = /filename="?([^";]+)"?/i.exec(cd);
+  const filename = m?.[1] ?? "streamguard-export.bin";
+  const countHeader = res.headers.get("x-export-count");
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  return { filename, bytes: blob.size, count: countHeader ? Number(countHeader) : null };
+}
+
+/** Build an export URL path with format/limit appended to list filters. */
+export function exportPath(
+  endpoint: string,
+  filters: Record<string, string | number | boolean | undefined | null>,
+  format: "csv" | "json",
+  limit = 2000,
+): string {
+  return `${endpoint}${downloadQs({ ...filters, format, limit })}`;
 }
 
 function asPaginated<T>(res: unknown): Paginated<T> {
@@ -311,4 +369,22 @@ export const api = {
 
   retentionRun: () =>
     request<{ deletedCount: number }>("/api/system/retention-run", { method: "POST", body: JSON.stringify({}) }),
+
+  /* ---------------------------- Backups (console edition) ---------------- */
+
+  backups: () =>
+    request<{
+      dir: string;
+      keep: number;
+      scheduleHours: number;
+      lastRunAt: string | null;
+      lastResult: { ok: boolean; file?: string; sizeBytes?: number; durationMs?: number; error?: string } | null;
+      backups: Array<{ name: string; sizeBytes: number; createdAt: string }>;
+    }>("/api/system/backups"),
+
+  createBackup: () =>
+    request<{ ok: boolean; file?: string; sizeBytes?: number; durationMs?: number }>(
+      "/api/system/backups",
+      { method: "POST", body: JSON.stringify({}) },
+    ),
 };

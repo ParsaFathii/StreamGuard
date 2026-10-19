@@ -2,6 +2,8 @@
 
 **Real-Time Event Processing, Security Analytics and AI-Assisted Incident Investigation**
 
+[![CI](https://github.com/ParsaFathii/StreamGuard/actions/workflows/ci.yml/badge.svg)](https://github.com/ParsaFathii/StreamGuard/actions/workflows/ci.yml)
+
 Copyright © 2026 Parsa Fathi — Apache-2.0
 
 StreamGuard ingests event streams, validates and normalizes them, applies
@@ -293,7 +295,7 @@ redaction in logs, prompt-injection-resistant AI, no secrets in the repo.
 
 See `CONTRIBUTING.md` (development setup, verification expectations per
 component, ground rules) and `CHANGELOG.md` (staged version history v1.x →
-v10.3.2 with what genuinely changed at each step). Releases are automated via
+v10.4.0 with what genuinely changed at each step). Releases are automated via
 `.github/workflows/release.yml`: a release publishes only if the full test
 suite passes and the tag matches the CHANGELOG head.
 

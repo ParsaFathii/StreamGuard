@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "streamguard-analytics"
-version = "10.3.2"
+version = "10.4.0"
 description = "StreamGuard analytics & ML package: EWMA baselines, pure-Python Isolation Forest, deterministic labeled evaluation, AI investigation provider adapter, and sidecar HTTP server."
 readme = "README.md"
 authors = [{ name = "Parsa Fathi" }]

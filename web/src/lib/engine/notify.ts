@@ -14,6 +14,7 @@
 // - "simulator"    payload {runId, scenarioId, phase: "start"|"done"}
 import { db } from '@/lib/db'
 import type { Severity, Category, Origin } from '@/lib/types'
+import { maybeRunBackup } from '@/lib/engine/backups'
 
 const STREAM_URL = 'http://127.0.0.1:3003'
 
@@ -95,6 +96,9 @@ const statsLoop: StatsLoopState = gs.__sgStatsLoop ?? (gs.__sgStatsLoop = { time
 export function ensureStatsLoop(): void {
   if (statsLoop.timer) return
   statsLoop.timer = setInterval(() => {
+    // daily backup check rides on the stats tick (self-throttled to one
+    // DB read / 5 min; the backup itself runs at most once per 24 h)
+    maybeRunBackup()
     void (async () => {
       try {
         const since = new Date(Date.now() - 24 * 3600 * 1000)

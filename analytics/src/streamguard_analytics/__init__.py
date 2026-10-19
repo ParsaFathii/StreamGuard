@@ -41,7 +41,7 @@ from .schemas import (
     parse_events,
 )
 
-__version__ = "10.3.2"
+__version__ = "10.4.0"
 VERSION = __version__
 
 __all__ = [

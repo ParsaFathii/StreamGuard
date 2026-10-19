@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api } from "@/lib/api-client";
+import { api, exportPath, IS_CONSOLE_EDITION } from "@/lib/api-client";
 import type { SessionUser } from "@/lib/types";
 import { isAdmin } from "@/lib/store";
 import {
@@ -28,6 +28,7 @@ import {
 } from "../primitives";
 import { JsonViewer } from "../json-viewer";
 import { MonoTime } from "../time";
+import { ExportMenu } from "../export-menu";
 import { PaginationFooter } from "../pagination";
 
 export function AuditSection({ user }: { user: SessionUser }) {
@@ -82,7 +83,28 @@ function AuditTable({ T }: { T: ReturnType<typeof useT> }) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title={T("audit.title")} desc={T("navDesc.audit")} />
+      <SectionHeader
+        title={T("audit.title")}
+        desc={T("navDesc.audit")}
+        actions={
+          IS_CONSOLE_EDITION ? (
+            <ExportMenu
+              buildPath={(format) =>
+                exportPath(
+                  "/api/audit",
+                  {
+                    actor: applied.actor.trim() || undefined,
+                    action: applied.action.trim() || undefined,
+                    targetType: applied.targetType.trim() || undefined,
+                  },
+                  format,
+                )
+              }
+              disabled={audit.isLoading}
+            />
+          ) : undefined
+        }
+      />
 
       {/* filters */}
       <div className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-card p-3">

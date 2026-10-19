@@ -76,6 +76,17 @@ analytics sidecar + this console in Go-backed mode).
   `incident:update`, `stats`, `simulator`) with identical payload shapes.
 - `event:new` payloads are batches: `{events: [...], count, ts}`.
 
+## Console-edition extras
+
+- **Evidence export** — every list view (Events, Detections, Incidents, Audit)
+  takes `format=csv|json` + `limit` (1..5000, default 2000) and returns a file
+  download (RFC 4180 CSV with UTF-8 BOM / JSON envelope) in the current
+  filter/sort order. Every export is audited (`export`). Hidden in Go-backed
+  mode (the Go service does not implement the export params).
+- **SQLite backups** — automatic daily snapshots (`VACUUM INTO`, rotation keeps
+  the newest 7 in `db/backups/`) plus an ADMIN "create now" button in Settings
+  (`GET/POST /api/system/backups`). Restore is a manual documented procedure.
+
 ## Note on credentials
 
 The seeded users and ingest key are demo-grade by design (labeled as such in

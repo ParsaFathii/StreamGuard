@@ -3,7 +3,7 @@
 // StreamGuard Console — Section 2: Event Explorer.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Download, RotateCcw, Search } from "lucide-react";
+import { ChevronRight, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,9 +25,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api } from "@/lib/api-client";
+import { api, exportPath, IS_CONSOLE_EDITION } from "@/lib/api-client";
 import { CATEGORIES, SEVERITIES, SOURCE_TYPES, type SgEvent, type Severity } from "@/lib/types";
 import { useUiStore } from "@/lib/store";
+import { ExportMenu } from "../export-menu";
 import {
   EmptyState,
   ErrorState,
@@ -86,16 +87,6 @@ function rangeToISO(range: RangeKey, from: string, to: string): { from?: string;
   }
   const mins = { "15m": 15, "1h": 60, "6h": 360, "24h": 1440, "7d": 10080 }[range] ?? 1440;
   return { from: new Date(Date.now() - mins * 60_000).toISOString() };
-}
-
-function downloadJSON(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export function EventExplorerSection() {
@@ -173,16 +164,28 @@ export function EventExplorerSection() {
         title={T("events.title")}
         desc={T("navDesc.events")}
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!rows.length}
-            onClick={() => {
-              downloadJSON(`streamguard-events-p${page}.json`, { filters: queryParams, exportedAt: new Date().toISOString(), total, page, pageSize, data: rows });
-            }}
-          >
-            <Download className="size-3.5" /> {T("events.exportPage")}
-          </Button>
+          IS_CONSOLE_EDITION ? (
+            <ExportMenu
+              buildPath={(format) =>
+                exportPath(
+                  "/api/events",
+                  {
+                    q: queryParams.q,
+                    severity: queryParams.severity?.join(","),
+                    category: queryParams.category,
+                    sourceId: queryParams.sourceId,
+                    sourceType: queryParams.sourceType,
+                    status: queryParams.status,
+                    origin: queryParams.origin,
+                    from: queryParams.from,
+                    to: queryParams.to,
+                  },
+                  format,
+                )
+              }
+              disabled={events.isLoading}
+            />
+          ) : undefined
         }
       />
 

@@ -7,7 +7,7 @@ EWMA baselines, a pure-Python Isolation Forest, labeled scenario datasets with g
 truth, a reproducible evaluation harness, an Ollama-compatible AI-investigation
 provider adapter, and a stateless sidecar HTTP server.
 
-- **Version:** 10.3.2 — **Author:** Parsa Fathi — **License:** Apache-2.0
+- **Version:** 10.4.0 — **Author:** Parsa Fathi — **License:** Apache-2.0
 - **Runtime deps:** `numpy>=1.26` only (no scipy/sklearn — the Isolation Forest is
   implemented from scratch; keeps the package CI-friendly and auditable)
 - **Determinism:** every source of randomness is seeded (42). Same seed ⇒ bit-identical

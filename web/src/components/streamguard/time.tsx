@@ -2,7 +2,7 @@
 
 // StreamGuard Console — time formatting helpers.
 // All timestamps render LTR mono (HH:mm:ss.SSS) with full ISO in a tooltip.
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useT } from "./primitives";
@@ -67,9 +67,35 @@ export function MonoTime({
   );
 }
 
-/** "3m ago" style relative time, i18n-aware; numbers stay latin mono. */
+/** "3m ago" style relative time, i18n-aware; numbers stay latin mono.
+ * Live: one shared 30 s ticker re-renders every mounted TimeAgo so lists
+ * don't freeze at stale labels (single interval regardless of row count). */
+const tickers = new Set<() => void>();
+let tickerTimer: ReturnType<typeof setInterval> | null = null;
+
+function ensureTicker(): void {
+  if (tickerTimer) return;
+  tickerTimer = setInterval(() => {
+    for (const fn of tickers) fn();
+  }, 30_000);
+}
+
+function useTick(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const fn = () => setN((v) => v + 1);
+    tickers.add(fn);
+    ensureTicker();
+    return () => {
+      tickers.delete(fn);
+    };
+  }, []);
+  return n;
+}
+
 export function TimeAgo({ iso, className }: { iso: string | null | undefined; className?: string }) {
   const T = useT();
+  useTick(); // live refresh — the label itself is computed below on every render
   const ms = relativeMs(iso);
   let label: string;
   if (ms === null) label = "—";
@@ -77,7 +103,10 @@ export function TimeAgo({ iso, className }: { iso: string | null | undefined; cl
   else if (ms < 60_000) label = T("ago.seconds", { n: Math.floor(ms / 1000) });
   else if (ms < 3_600_000) label = T("ago.minutes", { n: Math.floor(ms / 60_000) });
   else if (ms < 86_400_000) label = T("ago.hours", { n: Math.floor(ms / 3_600_000) });
-  else label = T("ago.days", { n: Math.floor(ms / 86_400_000) });
+  else if (ms < 7 * 86_400_000) label = T("ago.days", { n: Math.floor(ms / 86_400_000) });
+  else if (ms < 30 * 86_400_000) label = T("ago.weeks", { n: Math.floor(ms / (7 * 86_400_000)) });
+  else if (ms < 365 * 86_400_000) label = T("ago.months", { n: Math.floor(ms / (30 * 86_400_000)) });
+  else label = T("ago.years", { n: Math.floor(ms / (365 * 86_400_000)) });
 
   return (
     <Tooltip>

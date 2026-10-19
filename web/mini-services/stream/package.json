@@ -1,6 +1,6 @@
 {
   "name": "streamguard-stream",
-  "version": "10.3.2",
+  "version": "10.4.0",
   "private": true,
   "description": "StreamGuard live stream relay (socket.io). Pure relay: channels emitted by the Next.js backend via POST /emit.",
   "scripts": {

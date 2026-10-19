@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { api, ApiError } from "@/lib/api-client";
+import { api, ApiError, exportPath, IS_CONSOLE_EDITION } from "@/lib/api-client";
 import type { Incident, IncidentStatus, SessionUser, Severity } from "@/lib/types";
 import { isAnalystPlus, useUiStore } from "@/lib/store";
 import {
@@ -43,6 +43,7 @@ import {
   useT,
 } from "../primitives";
 import { TimeAgo } from "../time";
+import { ExportMenu } from "../export-menu";
 
 const STATUSES: IncidentStatus[] = ["NEW", "TRIAGED", "INVESTIGATING", "RESOLVED", "CLOSED"];
 
@@ -176,7 +177,28 @@ export function IncidentQueueSection({ user }: { user: SessionUser }) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title={T("incidents.title")} desc={T("navDesc.incidents")} />
+      <SectionHeader
+        title={T("incidents.title")}
+        desc={T("navDesc.incidents")}
+        actions={
+          IS_CONSOLE_EDITION ? (
+            <ExportMenu
+              buildPath={(format) =>
+                exportPath(
+                  "/api/incidents",
+                  {
+                    sort,
+                    severity: severityFilter === "all" ? undefined : severityFilter,
+                    status: statusFilter === "all" ? undefined : statusFilter,
+                  },
+                  format,
+                )
+              }
+              disabled={incidents.isLoading}
+            />
+          ) : undefined
+        }
+      />
 
       {/* controls */}
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3">

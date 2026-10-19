@@ -2,9 +2,10 @@
 // Copyright © 2026 Parsa Fathi — Apache-2.0
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { requireSession } from '@/lib/auth'
+import { audit, requireSession } from '@/lib/auth'
 import { CATEGORIES, SEVERITIES, SOURCE_TYPES } from '@/lib/types'
 import { apiRoute, invalidFilter, jsonError, jsonOk, parsePagination, readEnumMulti, readEnumSingle, readIsoRange, readSafeString, unauthorized } from '@/lib/engine/http'
+import { readExportParams, exportResponse, type ExportColumn } from '@/lib/engine/export'
 import { serializeEvent } from '@/lib/engine/serialize'
 import type { Prisma } from '@prisma/client'
 
@@ -105,6 +106,11 @@ export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
       : {}),
   }
 
+  // evidence export branch (format=csv|json + limit ≤ 5000; audited)
+  const exp = readExportParams(url)
+  if (!exp.ok) return exp.error
+  if (exp.value) return exportEvents(session, where, exp.value)
+
   const [total, rows] = await Promise.all([
     db.event.count({ where }),
     db.event.findMany({
@@ -116,6 +122,44 @@ export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   ])
   return jsonOk({ data: rows.map(serializeEvent), page: page.value.page, pageSize: page.value.pageSize, total })
 })
+
+const EVENT_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'id', key: 'id' },
+  { header: 'eventTime', key: 'eventTime' },
+  { header: 'ingestTime', key: 'ingestTime' },
+  { header: 'sourceId', key: 'sourceId' },
+  { header: 'sourceType', key: 'sourceType' },
+  { header: 'severity', key: 'severity' },
+  { header: 'category', key: 'category' },
+  { header: 'status', key: 'status' },
+  { header: 'origin', key: 'origin' },
+  { header: 'actor', key: 'actor' },
+  { header: 'correlationId', key: 'correlationId' },
+  { header: 'traceId', key: 'traceId' },
+  { header: 'latencyMs', key: 'latencyMs' },
+  { header: 'message', key: 'message' },
+  { header: 'attributes', key: 'attributes' },
+  { header: 'rejectionReason', key: 'rejectionReason' },
+]
+
+/** Shared export branch for the events list (format=csv|json + limit, ≤5000 rows). */
+async function exportEvents(
+  session: { user: { username: string; role: string } },
+  where: Prisma.EventWhereInput,
+  params: { format: 'csv' | 'json'; limit: number },
+): Promise<NextResponse> {
+  const rows = await db.event.findMany({ where, orderBy: { eventTime: 'desc' }, take: params.limit })
+  const data = rows.map(serializeEvent) as unknown as Array<Record<string, unknown>>
+  await audit({
+    actor: session.user.username,
+    role: session.user.role,
+    action: 'export',
+    targetType: 'export',
+    targetId: 'events',
+    details: { format: params.format, count: data.length, limit: params.limit },
+  })
+  return exportResponse('events', params, data, EVENT_EXPORT_COLUMNS)
+}
 
 export const POST = apiRoute(async (): Promise<NextResponse> => {
   return jsonError(405, 'METHOD_NOT_ALLOWED', 'Use GET /api/events')

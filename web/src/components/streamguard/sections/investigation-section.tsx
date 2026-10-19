@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Download, Loader2, Send, Sparkles, UserPlus } from "lucide-react";
+import { Download, Loader2, Printer, Send, Sparkles, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -31,6 +31,7 @@ import {
 import { JsonViewer } from "../json-viewer";
 import { MonoTime, TimeAgo, fmtFull } from "../time";
 import { AiReportView } from "../ai-report";
+import { aiReportHtml, escapeHtml, printReport } from "../print";
 import type { AiInvestigateResponse } from "@/lib/types";
 
 const STATUS_FLOW: IncidentStatus[] = ["NEW", "TRIAGED", "INVESTIGATING", "RESOLVED", "CLOSED"];
@@ -130,9 +131,114 @@ export function InvestigationSection({ user }: { user: SessionUser }) {
   const inc = detail.data;
   const aiEnabled = settings.data?.aiEnabled ?? false;
 
+  // Printable incident report — full case file: summary, timeline, notes,
+  // linked evidence and (when present) the AI analysis block.
+  const printIncident = () => {
+    if (!inc) return;
+    const evs = inc.events.slice(0, 100);
+    const evNote =
+      inc.events.length > evs.length
+        ? `<p class="muted">${escapeHtml(T("print.fShowing", { a: evs.length, b: inc.events.length }))}</p>`
+        : "";
+    const body =
+      `<h2>${escapeHtml(T("print.summary"))}</h2>` +
+      `<table><tbody>` +
+      `<tr><th>ID</th><td class="mono">${escapeHtml(inc.id)}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fSeverity"))}</th><td>${escapeHtml(inc.severity)}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fStatus"))}</th><td>${escapeHtml(inc.status)}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fRule"))}</th><td class="mono">${escapeHtml(inc.ruleId)}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fCorrelation"))}</th><td class="mono">${escapeHtml(inc.correlationLabel)} (${escapeHtml(inc.correlationKey)})</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fAssignee"))}</th><td>${escapeHtml(inc.assignedTo ?? "—")}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fEvents"))}</th><td class="mono num">${inc.eventCount}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fDetections"))}</th><td class="mono num">${inc.detectionCount}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fFirstEvent"))}</th><td class="mono">${escapeHtml(inc.firstEventTime ?? "—")}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fLastEvent"))}</th><td class="mono">${escapeHtml(inc.lastEventTime ?? "—")}</td></tr>` +
+      `<tr><th>${escapeHtml(T("print.fCreated"))}</th><td class="mono">${escapeHtml(inc.createdAt)}</td></tr>` +
+      (inc.resolutionSummary
+        ? `<tr><th>${escapeHtml(T("print.fResolution"))}</th><td>${escapeHtml(inc.resolutionSummary)}</td></tr>`
+        : "") +
+      `</tbody></table>` +
+      `<h2>${escapeHtml(T("print.timeline"))}</h2>` +
+      `<table><thead><tr><th>${escapeHtml(T("print.fFrom"))}</th><th>${escapeHtml(T("print.fTo"))}</th><th>${escapeHtml(T("print.fActor"))}</th><th class="num">${escapeHtml(T("print.fTime"))}</th></tr></thead><tbody>` +
+      inc.statusHistory
+        .map(
+          (h) =>
+            `<tr><td>${escapeHtml(h.fromStatus ?? "—")}</td><td>${escapeHtml(h.toStatus)}</td><td>${escapeHtml(h.actor)}</td><td class="mono">${escapeHtml(h.ts)}</td></tr>`,
+        )
+        .join("") +
+      `</tbody></table>` +
+      `<h2>${escapeHtml(T("print.notes"))}</h2>` +
+      (inc.notes.length
+        ? `<ul>${inc.notes
+            .map((n) => `<li><span class="mono">${escapeHtml(n.createdAt)}</span> — <b>${escapeHtml(n.author)}</b>: ${escapeHtml(n.body)}</li>`)
+            .join("")}</ul>`
+        : `<p class="muted">—</p>`) +
+      `<h2>${escapeHtml(T("print.linkedEvents"))}</h2>` +
+      evNote +
+      `<table><thead><tr><th>${escapeHtml(T("print.fTime"))}</th><th>${escapeHtml(T("print.fSource"))}</th><th>${escapeHtml(T("print.fSeverity"))}</th><th>${escapeHtml(T("print.fCategory"))}</th><th>${escapeHtml(T("print.fActor"))}</th><th>${escapeHtml(T("print.fMessage"))}</th></tr></thead><tbody>` +
+      evs
+        .map(
+          (e) =>
+            `<tr><td class="mono">${escapeHtml(e.eventTime)}</td><td class="mono">${escapeHtml(e.sourceId)}</td><td>${escapeHtml(e.severity)}</td><td>${escapeHtml(e.category)}</td><td>${escapeHtml(e.actor ?? "—")}</td><td>${escapeHtml(e.message)}</td></tr>`,
+        )
+        .join("") +
+      `</tbody></table>` +
+      `<h2>${escapeHtml(T("print.linkedDetections"))}</h2>` +
+      (inc.detections.length
+        ? `<table><thead><tr><th>${escapeHtml(T("print.fRule"))}</th><th>${escapeHtml(T("print.fSeverity"))}</th><th>${escapeHtml(T("print.fTitle"))}</th><th class="num">${escapeHtml(T("print.fTime"))}</th></tr></thead><tbody>` +
+          inc.detections
+            .map(
+              (d) =>
+                `<tr><td class="mono">${escapeHtml(d.ruleId)}</td><td>${escapeHtml(d.severity)}</td><td>${escapeHtml(d.title)}</td><td class="mono">${escapeHtml(d.createdAt)}</td></tr>`,
+            )
+            .join("") +
+          `</tbody></table>`
+        : `<p class="muted">—</p>`) +
+      (aiReport
+        ? `<h2>${escapeHtml(T("print.aiReport"))}</h2>` +
+          aiReportHtml(aiReport, {
+            summary: T("aiBlocks.summary"),
+            facts: T("aiBlocks.facts"),
+            ruleFindings: T("aiBlocks.ruleFindings"),
+            mlFindings: T("aiBlocks.mlFindings"),
+            hypotheses: T("aiBlocks.hypotheses"),
+            nextSteps: T("aiBlocks.nextSteps"),
+            references: T("aiBlocks.references"),
+            events: T("aiBlocks.events"),
+            incident: T("aiBlocks.incident"),
+            rules: T("print.rules"),
+            provider: T("print.provider"),
+          })
+        : "");
+    printReport(
+      {
+        title: `${T("print.incidentReport")} — ${inc.title}`,
+        subtitle: `${inc.id} · ${inc.ruleId} · ${inc.correlationLabel}`,
+        by: `${user.displayName} @${user.username}`,
+        labels: {
+          generatedBy: T("print.generatedBy"),
+          generatedAt: T("print.generatedAt"),
+          confidential: T("print.confidential"),
+        },
+        bodyHtml: body,
+      },
+      T("print.blocked"),
+    );
+  };
+
   return (
     <div className="space-y-4">
-      <SectionHeader title={T("investigate.title")} desc={T("navDesc.investigate")} />
+      <SectionHeader
+        title={T("investigate.title")}
+        desc={T("navDesc.investigate")}
+        actions={
+          inc ? (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={printIncident}>
+              <Printer className="size-3.5" /> {T("print.button")}
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* incident picker */}
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3">

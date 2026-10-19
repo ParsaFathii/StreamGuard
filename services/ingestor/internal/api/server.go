@@ -27,7 +27,7 @@ import (
 
 // VersionDefault is used by /api/health and X-StreamGuard-Version when the
 // Server Config does not override it.
-const VersionDefault = "10.3.2"
+const VersionDefault = "10.4.0"
 
 // Config tunes the Server.
 type Config struct {

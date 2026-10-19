@@ -21,9 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api } from "@/lib/api-client";
+import { api, exportPath, IS_CONSOLE_EDITION } from "@/lib/api-client";
 import { SEVERITIES, type Detection, type Severity } from "@/lib/types";
 import { useUiStore } from "@/lib/store";
+import { ExportMenu } from "../export-menu";
 import {
   DetectionStatusChip,
   EmptyState,
@@ -86,7 +87,31 @@ export function DetectionsSection() {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title={T("detections.title")} desc={T("navDesc.detections")} />
+      <SectionHeader
+        title={T("detections.title")}
+        desc={T("navDesc.detections")}
+        actions={
+          IS_CONSOLE_EDITION ? (
+            <ExportMenu
+              buildPath={(format) =>
+                exportPath(
+                  "/api/detections",
+                  {
+                    ruleId: ruleId === "all" ? undefined : ruleId,
+                    severity: severity === "all" ? undefined : severity,
+                    // fresh window at click time — the list view freezes it at render
+                    from: new Date(
+                      Date.now() - ({ "1h": 60, "6h": 360, "24h": 1440, "7d": 10080 } as const)[time] * 60_000,
+                    ).toISOString(),
+                  },
+                  format,
+                )
+              }
+              disabled={detections.isLoading}
+            />
+          ) : undefined
+        }
+      />
 
       {/* filter bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3">

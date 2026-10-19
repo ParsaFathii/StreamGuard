@@ -17,8 +17,30 @@ export const metadata: Metadata = {
   title: "StreamGuard Console",
   description:
     "StreamGuard — real-time event processing, security analytics and AI-assisted incident investigation. Demo edition (simulator data).",
+  applicationName: "StreamGuard Console",
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2310B981'/%3E%3Cpath d='M10 20.5V11.5L16 17l6-5.5v9' stroke='%23052E22' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E",
+    icon: [
+      { url: "/icons/icon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "StreamGuard Console",
+    description:
+      "Real-time event processing, security analytics and AI-assisted incident investigation.",
+    type: "website",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "StreamGuard Console" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "StreamGuard Console",
+    description:
+      "Real-time event processing, security analytics and AI-assisted incident investigation.",
+    images: ["/og.png"],
   },
 };
 

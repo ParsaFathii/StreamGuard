@@ -294,7 +294,7 @@ flowchart LR
 ```
 
 A failed required test blocks the release. See `CHANGELOG.md` for the staged
-version history (v1.x through v10.3.2) and what genuinely changed at each
+version history (v1.x through v10.4.0) and what genuinely changed at each
 stage.
 
 ## 12. Known limitations (honest)

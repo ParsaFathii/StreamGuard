@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Send, ShieldAlert, Sparkles } from "lucide-react";
+import { Loader2, Printer, Send, ShieldAlert, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,7 @@ import {
   useT,
 } from "../primitives";
 import { AiReportView } from "../ai-report";
+import { aiReportHtml, printReport } from "../print";
 import { fmtFull } from "../time";
 
 export function AiSection({ user }: { user: SessionUser }) {
@@ -94,6 +95,44 @@ export function AiSection({ user }: { user: SessionUser }) {
         desc={T("navDesc.ai")}
         actions={
           <div className="flex items-center gap-2">
+            {report ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 text-xs"
+                aria-label={T("print.button")}
+                onClick={() => {
+                  printReport(
+                    {
+                      title: `${T("print.aiReport")} — ${incidentId}`,
+                      subtitle: `${T("ai.reportFor")} ${incidentId}`,
+                      by: `${user.displayName} @${user.username}`,
+                      labels: {
+                        generatedBy: T("print.generatedBy"),
+                        generatedAt: T("print.generatedAt"),
+                        confidential: T("print.confidential"),
+                      },
+                      bodyHtml: aiReportHtml(report, {
+                        summary: T("aiBlocks.summary"),
+                        facts: T("aiBlocks.facts"),
+                        ruleFindings: T("aiBlocks.ruleFindings"),
+                        mlFindings: T("aiBlocks.mlFindings"),
+                        hypotheses: T("aiBlocks.hypotheses"),
+                        nextSteps: T("aiBlocks.nextSteps"),
+                        references: T("aiBlocks.references"),
+                        events: T("aiBlocks.events"),
+                        incident: T("aiBlocks.incident"),
+                        rules: T("print.rules"),
+                        provider: T("print.provider"),
+                      }),
+                    },
+                    T("print.blocked"),
+                  );
+                }}
+              >
+                <Printer className="size-3.5" /> {T("print.button")}
+              </Button>
+            ) : null}
             <StatusChip tone={aiEnabled ? "ok" : "muted"}>
               {T("ai.provider")}: {settings.data?.aiProvider ?? "…"} ·{" "}
               {aiEnabled ? T("ai.providerStatus.ok") : T("ai.providerStatus.disabled")}

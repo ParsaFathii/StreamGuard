@@ -34,6 +34,7 @@ import { api, ApiError } from "@/lib/api-client";
 import type { SgSettings, SessionUser } from "@/lib/types";
 import { isAdmin, useUiStore } from "@/lib/store";
 import { SectionHeader, SkeletonCards, useT } from "../primitives";
+import { BackupPanel } from "../backup-panel";
 
 export function SettingsSection({ user }: { user: SessionUser }) {
   const T = useT();
@@ -383,6 +384,9 @@ export function SettingsSection({ user }: { user: SessionUser }) {
                 </table>
               </div>
             </div>
+
+            {/* database backups (ADMIN, console edition) */}
+            <BackupPanel admin={admin} />
 
             {/* danger zone */}
             <div className="rounded-md border border-rose-500/30 bg-rose-500/[0.03] p-4">

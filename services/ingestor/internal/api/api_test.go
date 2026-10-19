@@ -189,7 +189,7 @@ func TestAuthMatrix(t *testing.T) {
 
 	// version header on every response
 	resp, _ := e.doRaw(&http.Client{}, http.MethodGet, "/api/health", "", nil)
-	if got := resp.Header.Get("X-StreamGuard-Version"); got != "10.3.2" {
+	if got := resp.Header.Get("X-StreamGuard-Version"); got != "10.4.0" {
 		t.Fatalf("X-StreamGuard-Version = %q", got)
 	}
 
@@ -528,7 +528,7 @@ func TestHealthAndMetrics(t *testing.T) {
 		} `json:"retention"`
 	}
 	json.Unmarshal([]byte(raw), &h)
-	if resp.StatusCode != 200 || h.Version != "10.3.2" || h.Checks.DB != "up" || h.Checks.WS != "up" {
+	if resp.StatusCode != 200 || h.Version != "10.4.0" || h.Checks.DB != "up" || h.Checks.WS != "up" {
 		t.Fatalf("health: %d %s", resp.StatusCode, raw)
 	}
 	// provider is at an unroutable URL: honest degraded state
