@@ -1,7 +1,7 @@
 "use client";
 
 // StreamGuard Console — Section 6: Incident Queue (kanban on xl, list on small screens).
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -10,13 +10,16 @@ import {
   CircleSlash,
   ClipboardList,
   Inbox,
+  MoreHorizontal,
   SearchCheck,
   UserPlus,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -63,6 +66,8 @@ export function IncidentQueueSection({ user }: { user: SessionUser }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [resolveTarget, setResolveTarget] = useState<Incident | null>(null);
   const [bulkStatus, setBulkStatus] = useState<string>("");
+  // Element that opened the resolve dialog — focus is restored there on close (a11y).
+  const resolveReturnRef = useRef<HTMLElement | null>(null);
 
   const incidents = useQuery({
     queryKey: ["incidents", "queue", { sort }],
@@ -161,8 +166,10 @@ export function IncidentQueueSection({ user }: { user: SessionUser }) {
       onOpen={() => openIncident(inc.id)}
       username={user.username}
       onAct={(patch) => {
-        if (patch.status === "RESOLVED") setResolveTarget(inc);
-        else act(inc, patch);
+        if (patch.status === "RESOLVED") {
+          resolveReturnRef.current = document.activeElement as HTMLElement | null;
+          setResolveTarget(inc);
+        } else act(inc, patch);
       }}
     />
   );
@@ -267,6 +274,7 @@ export function IncidentQueueSection({ user }: { user: SessionUser }) {
 
       <ResolveDialog
         inc={resolveTarget}
+        returnRef={resolveReturnRef}
         onClose={() => setResolveTarget(null)}
         onConfirm={(summary) => {
           if (resolveTarget) act(resolveTarget, { status: "RESOLVED", resolutionSummary: summary });
@@ -302,6 +310,24 @@ function IncidentCard({
   const sev = SEVERITY_UI[inc.severity];
   const actions = TRANSITIONS[inc.status] ?? [];
 
+  // Build the full action list, then show at most 3 primary buttons and fold
+  // the rest into an overflow "…" menu — one consistent layout on every card.
+  const all: Array<{ key: string; label: string; icon: LucideIcon; run: () => void }> = [];
+  if (inc.assignedTo === null)
+    all.push({ key: "assign", label: T("incidents.assignToMe"), icon: UserPlus, run: () => onAct({ assignedTo: username }) });
+  if (inc.status === "NEW")
+    all.push({ key: "triage", label: T("incidents.triage"), icon: ClipboardList, run: () => onAct({ status: "TRIAGED" }) });
+  if (canEdit && (inc.status === "NEW" || inc.status === "TRIAGED"))
+    all.push({ key: "investigate", label: T("incidents.investigate"), icon: SearchCheck, run: () => onAct({ status: "INVESTIGATING" }) });
+  if (canEdit && actions.includes("RESOLVED"))
+    all.push({ key: "resolve", label: T("incidents.resolve"), icon: CheckCircle2, run: () => onAct({ status: "RESOLVED", resolutionSummary: "" }) });
+  if (canEdit && inc.status === "RESOLVED")
+    all.push({ key: "close", label: T("incidents.close"), icon: CircleSlash, run: () => onAct({ status: "CLOSED" }) });
+  if (canEdit && inc.status === "CLOSED" && isAdmin)
+    all.push({ key: "reopen", label: `${T("investigate.moveTo")} INVESTIGATING`, icon: SearchCheck, run: () => onAct({ status: "INVESTIGATING" }) });
+  const primary = all.slice(0, 3);
+  const overflow = all.slice(3);
+
   return (
     <article
       className={`rounded-md border bg-card transition-colors ${
@@ -316,18 +342,22 @@ function IncidentCard({
               checked={selected}
               onCheckedChange={onToggleSelect}
               className="mt-0.5"
-              aria-label={`select ${inc.id}`}
+              aria-label={T("incidents.selectIncident", { id: inc.id })}
             />
           )}
           <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-start">
             <div className="flex items-center gap-2">
-              <span dir="ltr" className="sg-num text-[11px] text-muted-foreground">{inc.id}</span>
+              <span dir="ltr" title={inc.id} className="sg-num shrink-0 text-[11px] text-muted-foreground">{inc.id}</span>
               <SeverityBadge severity={inc.severity} />
             </div>
-            <p className="mt-1 truncate text-[13px] font-medium" title={inc.title}>
+            <p className="mt-1 line-clamp-2 break-words text-[13px] font-medium leading-snug" title={inc.title}>
               {inc.title}
             </p>
-            <p dir="ltr" className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+            <p
+              dir="ltr"
+              title={`${inc.ruleId} · ${inc.correlationLabel}: ${inc.correlationKey}`}
+              className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
+            >
               {inc.ruleId} · {inc.correlationLabel}: {inc.correlationKey}
             </p>
           </button>
@@ -340,48 +370,51 @@ function IncidentCard({
           <span>
             {T("incidents.age")}: <TimeAgo iso={inc.createdAt} />
           </span>
-          <span className="max-w-32 truncate">
+          <span className="max-w-32 truncate" title={`${T("incidents.assignee")}: ${inc.assignedTo ?? T("incidents.unassigned")}`}>
             {T("incidents.assignee")}: {inc.assignedTo ?? T("incidents.unassigned")}
           </span>
         </div>
 
-        {(canEdit) && (
-          <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-border pt-2">
-            {inc.assignedTo === null && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onAct({ assignedTo: username })}>
-                <UserPlus className="size-3" /> {T("incidents.assignToMe")}
-              </Button>
-            )}
-            {canEdit && actions.includes("TRIAGED") && inc.status === "NEW" && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onAct({ status: "TRIAGED" })}>
-                <ClipboardList className="size-3" /> {T("incidents.triage")}
-              </Button>
-            )}
-            {canEdit && (inc.status === "NEW" || inc.status === "TRIAGED") && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onAct({ status: "INVESTIGATING" })}>
-                <SearchCheck className="size-3" /> {T("incidents.investigate")}
-              </Button>
-            )}
-            {canEdit && actions.includes("RESOLVED") && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onAct({ status: "RESOLVED", resolutionSummary: "" })}>
-                <CheckCircle2 className="size-3" /> {T("incidents.resolve")}
-              </Button>
-            )}
-            {canEdit && inc.status === "RESOLVED" && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onAct({ status: "CLOSED" })}>
-                <CircleSlash className="size-3" /> {T("incidents.close")}
-              </Button>
-            )}
-            {canEdit && inc.status === "CLOSED" && isAdmin && (
-              <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => onAct({ status: "INVESTIGATING" })}>
-                {T("investigate.moveTo")} INVESTIGATING
-              </Button>
-            )}
-            <span className="flex-1" />
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]" onClick={onOpen}>
-              {T("incidents.openIncident")} <ChevronRight className="size-3" />
+        {canEdit && (
+          <>
+            <div className="mt-2 flex items-center gap-1.5 border-t border-border pt-2">
+              {primary.map((a) => (
+                <Button key={a.key} size="sm" variant="outline" className="h-11 px-2.5 text-[11px] sm:h-7 sm:px-2" onClick={a.run}>
+                  <a.icon className="size-3" /> {a.label}
+                </Button>
+              ))}
+              {overflow.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-11 w-11 gap-0 p-0 sm:h-7 sm:w-7"
+                      aria-label={T("common.moreActions")}
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    {overflow.map((a) => (
+                      <DropdownMenuItem key={a.key} onClick={a.run} className="gap-2 text-xs">
+                        <a.icon className="size-3.5" /> {a.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="mt-1 flex min-h-11 w-full items-center justify-between px-2 text-[11px] sm:min-h-8"
+              onClick={onOpen}
+            >
+              {T("incidents.openIncident")}
+              <ChevronRight className="size-3.5 rtl:-scale-x-100" />
             </Button>
-          </div>
+          </>
         )}
       </div>
     </article>
@@ -392,10 +425,12 @@ function IncidentCard({
 
 function ResolveDialog({
   inc,
+  returnRef,
   onClose,
   onConfirm,
 }: {
   inc: Incident | null;
+  returnRef: React.RefObject<HTMLElement | null>;
   onClose: () => void;
   onConfirm: (summary: string) => void;
 }) {
@@ -414,7 +449,16 @@ function ResolveDialog({
 
   return (
     <Dialog open={!!inc} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onCloseAutoFocus={(e) => {
+          // no DialogTrigger here — restore focus to the button that opened the dialog
+          if (returnRef.current) {
+            e.preventDefault();
+            returnRef.current.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-sm">
             {T("incidents.resolveTitle")} <span dir="ltr" className="sg-num text-xs text-muted-foreground">{inc?.id}</span>

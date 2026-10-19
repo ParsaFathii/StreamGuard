@@ -3,12 +3,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
-import { invalidFilter, jsonOk, notFound, parsePagination, unauthorized } from '@/lib/engine/http'
+import { apiRoute, invalidFilter, jsonOk, notFound, parsePagination, unauthorized } from '@/lib/engine/http'
 import { serializeEvent } from '@/lib/engine/serialize'
 
 const INC_ID_RE = /^INC-\d{1,6}$/
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+export const GET = apiRoute<{ params: Promise<{ id: string }> }>(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   const { id } = await params
@@ -36,4 +36,4 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     pageSize: page.value.pageSize,
     total,
   })
-}
+})

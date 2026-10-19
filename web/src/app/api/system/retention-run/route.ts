@@ -2,11 +2,11 @@
 // Copyright © 2026 Parsa Fathi — Apache-2.0
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireRole, requireSession } from '@/lib/auth'
-import { forbidden, jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, jsonOk, unauthorized } from '@/lib/engine/http'
 import { runRetention } from '@/lib/engine/retention'
 import { getSettings } from '@/lib/settings'
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN')) return forbidden()
@@ -21,4 +21,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     cutoff: result.cutoff,
     policyHours: settings.retentionHours,
   })
-}
+})

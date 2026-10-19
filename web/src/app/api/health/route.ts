@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
 import { getRetentionState, getSettings } from '@/lib/settings'
-import { jsonOk, unauthorized, API_VERSION } from '@/lib/engine/http'
+import { API_VERSION, apiRoute, jsonOk, unauthorized } from '@/lib/engine/http'
 import { ensureStatsLoop } from '@/lib/engine/notify'
 
 async function checkDb(): Promise<'up' | 'down'> {
@@ -25,7 +25,7 @@ async function checkWs(): Promise<'up' | 'down'> {
   }
 }
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   ensureStatsLoop()
@@ -54,4 +54,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       deletedCount: retention.deletedCount ?? 0,
     },
   })
-}
+})

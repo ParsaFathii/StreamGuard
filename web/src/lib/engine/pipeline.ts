@@ -15,6 +15,7 @@ import { compactEvent, notify, queueEventNotifications } from '@/lib/engine/noti
 import { markLastEvent, countDuplicates } from '@/lib/engine/proc-stats'
 import { toStored, type EngineCtx, type StoredEvent } from '@/lib/engine/types'
 import { maybeRunRetention } from '@/lib/engine/retention'
+import { withEngineLock } from '@/lib/engine/lock'
 
 export interface IngestOptions {
   /** processing "current time" (detection/incident timestamps, cooldowns) — historical for seed replay */
@@ -41,7 +42,18 @@ export interface IngestResult {
   processed: number
 }
 
-export async function ingestEvents(raws: unknown[], opts: IngestOptions = {}): Promise<IngestResult> {
+/**
+ * Public entry point: the whole pipeline runs inside the engine mutex so that
+ * validate -> store -> rules -> correlate is serialized per process (fixes the
+ * cooldown/correlation/idempotency TOCTOU races). All callers (ingest route,
+ * simulator routes, seed replay) MUST use this function; nothing may call
+ * ingestEventsInner directly and no code may nest withEngineLock.
+ */
+export function ingestEvents(raws: unknown[], opts: IngestOptions = {}): Promise<IngestResult> {
+  return withEngineLock(() => ingestEventsInner(raws, opts))
+}
+
+async function ingestEventsInner(raws: unknown[], opts: IngestOptions = {}): Promise<IngestResult> {
   const ctx: EngineCtx = { now: opts.now ?? new Date() }
   const ingestTime = opts.ingestTime ?? new Date()
   const origin = opts.origin ?? 'synthetic'
@@ -111,38 +123,65 @@ export async function ingestEvents(raws: unknown[], opts: IngestOptions = {}): P
   }
 
   // 3) store accepted events
+  //    P2002 fallback (belt-and-braces with the engine lock): if a concurrent
+  //    writer stored one of our ids first (multi-process edge, or a lock-free
+  //    caller), classify per-row instead of failing the whole request.
   let storedRows: StoredEvent[] = []
+  const storedIds: string[] = []
   if (valid.length > 0) {
-    await db.event.createMany({
-      data: valid.map((v) => ({
-        id: v.event.event_id,
-        schemaVersion: 1,
-        eventTime: v.event.event_time,
-        ingestTime,
-        sourceId: v.event.source_id,
-        sourceType: v.event.source_type,
-        severity: v.event.severity,
-        category: v.event.category,
-        message: v.event.message,
-        attributesJson: JSON.stringify(v.event.attributes ?? {}),
-        correlationId: v.event.correlation_id ?? null,
-        traceId: v.event.trace_id ?? null,
-        actor: v.event.actor ?? null,
-        origin,
-        status: 'VALIDATED',
-      })),
-    })
-    storedRows = valid.map((v) => toStored({
+    const rows = valid.map((v) => ({
       id: v.event.event_id,
+      schemaVersion: 1,
       eventTime: v.event.event_time,
+      ingestTime,
       sourceId: v.event.source_id,
       sourceType: v.event.source_type,
       severity: v.event.severity,
       category: v.event.category,
       message: v.event.message,
       attributesJson: JSON.stringify(v.event.attributes ?? {}),
+      correlationId: v.event.correlation_id ?? null,
+      traceId: v.event.trace_id ?? null,
       actor: v.event.actor ?? null,
+      origin,
+      status: 'VALIDATED',
     }))
+    try {
+      await db.event.createMany({ data: rows })
+      for (const v of valid) storedIds.push(v.event.event_id)
+    } catch (err) {
+      if ((err as { code?: string }).code !== 'P2002') throw err
+      // unique-constraint race: retry per-row, classifying each outcome
+      const storedSet = new Set<string>()
+      for (let i = 0; i < valid.length; i++) {
+        try {
+          await db.event.create({ data: rows[i] })
+          storedSet.add(valid[i].event.event_id)
+        } catch (e2) {
+          if ((e2 as { code?: string }).code === 'P2002') {
+            result.duplicates += 1
+            result.duplicateIds.push(valid[i].event.event_id)
+          } else {
+            throw e2
+          }
+        }
+      }
+      for (const v of valid) if (storedSet.has(v.event.event_id)) storedIds.push(v.event.event_id)
+    }
+    const storedIdSet = new Set(storedIds)
+    storedRows = valid
+      .filter((v) => storedIdSet.has(v.event.event_id))
+      .map((v) => toStored({
+        id: v.event.event_id,
+        eventTime: v.event.event_time,
+        sourceId: v.event.source_id,
+        sourceType: v.event.source_type,
+        severity: v.event.severity,
+        category: v.event.category,
+        message: v.event.message,
+        attributesJson: JSON.stringify(v.event.attributes ?? {}),
+        actor: v.event.actor ?? null,
+      }))
     result.accepted = storedRows.length
     result.eventIds = storedRows.map((e) => e.id)
   }

@@ -8,6 +8,8 @@ export const MAX_BODY_BYTES = 256 * 1024 // batch request body limit
 export const FUTURE_SKEW_MS = 10 * 60 * 1000 // event_time may not be more than 10 min in the future
 
 const SOURCE_ID_RE = /^[a-zA-Z0-9._-]{1,64}$/
+// strict ISO-8601 with mandatory timezone: YYYY-MM-DDTHH:mm:ss(.mmm)?(Z|±HH:MM)
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/
 const EVENT_FIELDS = [
   'event_id',
   'schema_version',
@@ -45,7 +47,9 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 }
 
 function parseIso(value: unknown): Date | null {
-  if (typeof value !== 'string' || value.length < 10) return null
+  // strict ISO-8601: must carry seconds and an explicit timezone (Z or ±HH:MM).
+  // Zone-less strings would be parsed as server-local time — rejected by contract.
+  if (typeof value !== 'string' || !ISO_RE.test(value)) return null
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return null
   return d
@@ -91,7 +95,7 @@ export function validateEventInput(raw: unknown): ValidationOutcome {
   let attributes: Record<string, unknown> | undefined
   if (raw.attributes !== undefined) {
     if (!isPlainObject(raw.attributes)) return { ok: false, reason: 'attributes must be a JSON object' }
-    const size = JSON.stringify(raw.attributes).length
+    const size = Buffer.byteLength(JSON.stringify(raw.attributes), 'utf8')
     if (size > MAX_EVENT_BYTES) return { ok: false, reason: 'attributes too large (stringified <= 4KB required)' }
     attributes = raw.attributes
   }
@@ -104,7 +108,7 @@ export function validateEventInput(raw: unknown): ValidationOutcome {
     }
   }
 
-  const total = JSON.stringify(raw).length
+  const total = Buffer.byteLength(JSON.stringify(raw), 'utf8')
   if (total > MAX_EVENT_BYTES) return { ok: false, reason: `event exceeds 4KB limit (${total} bytes)` }
 
   return {

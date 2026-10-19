@@ -188,7 +188,7 @@ export function EventExplorerSection() {
 
       {/* filter bar */}
       <div className="rounded-md border border-border bg-card p-3">
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-wrap items-center gap-2 gap-y-2.5">
           <div className="relative min-w-52 flex-1">
             <Search className="absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -277,7 +277,7 @@ export function EventExplorerSection() {
             <SelectContent>
               <SelectItem value="all" className="text-xs">{T("common.all")}</SelectItem>
               {["VALIDATED", "PROCESSED", "REJECTED"].map((s) => (
-                <SelectItem key={s} value={s} className="font-mono text-xs">{s}</SelectItem>
+                <SelectItem key={s} value={s} className="text-xs">{T(`eventStatus.${s}`)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -288,8 +288,8 @@ export function EventExplorerSection() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="text-xs">{T("common.all")}</SelectItem>
-              <SelectItem value="synthetic" className="font-mono text-xs">synthetic</SelectItem>
-              <SelectItem value="external" className="font-mono text-xs">external</SelectItem>
+              <SelectItem value="synthetic" className="text-xs">{T("origin.synthetic")}</SelectItem>
+              <SelectItem value="external" className="text-xs">{T("origin.external")}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -345,11 +345,12 @@ export function EventExplorerSection() {
         />
       ) : (
         <div className="rounded-md border border-border bg-card">
-          <div className="overflow-x-auto">
+          {/* table (≥sm) — mobile uses the stacked cards below */}
+          <div className="hidden overflow-x-auto sm:block">
             <Table className="sg-table">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead scope="col" className="w-8" aria-label={T("common.details")} />
+                  <TableHead scope="col" className="w-12" aria-label={T("common.details")} />
                   <TableHead scope="col" className="whitespace-nowrap">{T("common.time")}</TableHead>
                   <TableHead scope="col">{T("common.severity")}</TableHead>
                   <TableHead scope="col" className="hidden md:table-cell">{T("common.category")}</TableHead>
@@ -374,6 +375,20 @@ export function EventExplorerSection() {
               </TableBody>
             </Table>
           </div>
+
+          {/* mobile (<sm): stacked cards — severity + time header, full message, source/actor footer */}
+          <div className="divide-y divide-border sm:hidden">
+            {rows.map((ev: SgEvent) => (
+              <MobileEventCard
+                key={ev.id}
+                ev={ev}
+                expanded={expanded === ev.id}
+                onToggle={() => setExpanded(expanded === ev.id ? null : ev.id)}
+                onOpen={() => setDetailId(ev.id)}
+              />
+            ))}
+          </div>
+
           <div className="px-2">
             <PaginationFooter
               page={page}
@@ -472,7 +487,7 @@ export function EventExplorerSection() {
                             <button
                               type="button"
                               onClick={() => setDetailId(r.id)}
-                              className="flex w-full items-center gap-2 rounded border border-border bg-secondary/30 px-2 py-1.5 text-start text-xs transition-colors hover:bg-secondary"
+                              className="flex min-h-11 w-full items-center gap-2 rounded border border-border bg-secondary/30 px-2 py-1.5 text-start text-xs transition-colors hover:bg-secondary"
                             >
                               <SeverityDot severity={r.severity} />
                               <MonoTime iso={r.eventTime} className="text-muted-foreground" />
@@ -505,6 +520,7 @@ function EventRow({
   onToggle: () => void;
   onOpen: () => void;
 }) {
+  const T = useT();
   return (
     <>
       <TableRow
@@ -514,18 +530,19 @@ function EventRow({
           onOpen();
         }}
       >
-        <TableCell className="w-8">
+        <TableCell className="w-12 py-1 ps-2 pe-0">
           <button
             type="button"
             data-no-rowclick
-            aria-label={expanded ? "collapse" : "expand"}
+            aria-label={expanded ? T("common.hideDetails") : T("common.showDetails")}
+            aria-expanded={expanded}
             onClick={(e) => {
               e.stopPropagation();
               onToggle();
             }}
-            className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+            className="flex size-11 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ChevronRight className={`size-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} />
+            <ChevronRight className={`size-3.5 transition-transform ${expanded ? "rotate-90" : "rtl:-scale-x-100"}`} />
           </button>
         </TableCell>
         <TableCell className="whitespace-nowrap">
@@ -535,8 +552,10 @@ function EventRow({
           <SeverityBadge severity={ev.severity} />
         </TableCell>
         <TableCell className="hidden font-mono text-[11px] text-muted-foreground md:table-cell">{ev.category}</TableCell>
-        <TableCell dir="ltr" className="hidden font-mono text-[11px] md:table-cell">{ev.sourceId}</TableCell>
-        <TableCell dir="ltr" className="hidden max-w-28 truncate font-mono text-[11px] text-muted-foreground xl:table-cell">
+        <TableCell dir="ltr" title={ev.sourceId} className="hidden max-w-40 truncate font-mono text-[11px] md:table-cell">
+          {ev.sourceId}
+        </TableCell>
+        <TableCell dir="ltr" title={ev.actor ?? "—"} className="hidden max-w-28 truncate font-mono text-[11px] text-muted-foreground xl:table-cell">
           {ev.actor ?? "—"}
         </TableCell>
         <TableCell className="max-w-56">
@@ -545,7 +564,7 @@ function EventRow({
         <TableCell className="hidden sm:table-cell">
           <OriginBadge origin={ev.origin} />
         </TableCell>
-        <TableCell dir="ltr" className="hidden max-w-24 truncate font-mono text-[10px] text-muted-foreground xl:table-cell">
+        <TableCell dir="ltr" title={ev.correlationId ?? "—"} className="hidden max-w-24 truncate font-mono text-[10px] text-muted-foreground xl:table-cell">
           {ev.correlationId ?? "—"}
         </TableCell>
         <TableCell className="hidden md:table-cell">
@@ -555,10 +574,61 @@ function EventRow({
       {expanded && (
         <TableRow className="hover:bg-transparent">
           <TableCell colSpan={10} className="bg-secondary/30 p-3">
-            <JsonViewer value={ev} maxHeight={240} />
+            <div className="max-w-full overflow-x-auto">
+              <JsonViewer value={ev} maxHeight={240} />
+            </div>
           </TableCell>
         </TableRow>
       )}
     </>
+  );
+}
+
+/** Stacked-card presentation for <640px: severity+time header, full message, source/actor footer. */
+function MobileEventCard({
+  ev,
+  expanded,
+  onToggle,
+  onOpen,
+}: {
+  ev: SgEvent;
+  expanded: boolean;
+  onToggle: () => void;
+  onOpen: () => void;
+}) {
+  const T = useT();
+  return (
+    <div>
+      <button type="button" onClick={onOpen} className="flex w-full flex-col gap-2 p-3 text-start">
+        <div className="flex items-center gap-2">
+          <SeverityBadge severity={ev.severity} />
+          <MonoTime iso={ev.eventTime} className="text-[11px] text-muted-foreground" />
+          <span className="flex-1" />
+          <EventStatusChip status={ev.status} />
+        </div>
+        <p className="break-words text-xs leading-snug">{ev.message}</p>
+        <p dir="ltr" className="truncate font-mono text-[10px] text-muted-foreground">
+          {ev.sourceId}
+          {ev.actor ? ` · ${ev.actor}` : ""}
+        </p>
+      </button>
+      <div className="border-t border-border">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          aria-label={expanded ? T("common.hideDetails") : T("common.showDetails")}
+          className="flex min-h-11 w-full items-center justify-center gap-1.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronRight className={`size-3.5 transition-transform ${expanded ? "rotate-90" : "rtl:-scale-x-100"}`} />
+          {expanded ? T("common.hideDetails") : T("common.showDetails")}
+        </button>
+      </div>
+      {expanded && (
+        <div className="border-t border-border p-3">
+          <JsonViewer value={ev} maxHeight={240} />
+        </div>
+      )}
+    </div>
   );
 }

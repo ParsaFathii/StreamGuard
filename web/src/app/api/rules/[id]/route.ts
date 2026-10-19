@@ -4,13 +4,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { audit, requireRole, requireSession } from '@/lib/auth'
-import { forbidden, jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
 import { SEVERITIES } from '@/lib/types'
 
 const Body = z
   .object({
     enabled: z.boolean().optional(),
-    threshold: z.number().min(1).max(10000).optional(),
+    threshold: z.number().int().min(1).max(10000).optional(),
     windowSeconds: z.number().int().min(10).max(3600).optional(),
     severity: z.enum(SEVERITIES).optional(),
     cooldownSeconds: z.number().int().min(0).max(3600).optional(),
@@ -18,7 +18,7 @@ const Body = z
   .strict()
   .refine((v) => Object.keys(v).length > 0, { message: 'at least one field is required' })
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+export const PATCH = apiRoute<{ params: Promise<{ id: string }> }>(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN', 'ANALYST')) return forbidden()
@@ -96,4 +96,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     version: updated.version,
     updatedAt: updated.updatedAt.toISOString(),
   })
-}
+})

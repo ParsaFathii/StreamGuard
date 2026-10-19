@@ -1,7 +1,7 @@
 "use client";
 
 // StreamGuard Console — Section 4: Detection Rules.
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FlaskConical, Pencil, ShieldQuestion } from "lucide-react";
@@ -45,6 +45,9 @@ export function RulesSection({ user }: { user?: SessionUser | null }) {
   const qc = useQueryClient();
   const [editRule, setEditRule] = useState<SgRule | null>(null);
   const [previewRule, setPreviewRule] = useState<SgRule | null>(null);
+  // Elements that opened the dialogs — focus is restored there on close (a11y).
+  const editReturnRef = useRef<HTMLElement | null>(null);
+  const previewReturnRef = useRef<HTMLElement | null>(null);
 
   const rules = useQuery({ queryKey: ["rules"], queryFn: api.rules });
 
@@ -144,7 +147,10 @@ export function RulesSection({ user }: { user?: SessionUser | null }) {
                               variant="ghost"
                               className="size-7"
                               aria-label={T("rules.testRule")}
-                              onClick={() => setPreviewRule(rule)}
+                              onClick={() => {
+                                previewReturnRef.current = document.activeElement as HTMLElement | null;
+                                setPreviewRule(rule);
+                              }}
                             >
                               <FlaskConical className="size-3.5" />
                             </Button>
@@ -159,7 +165,10 @@ export function RulesSection({ user }: { user?: SessionUser | null }) {
                               className="size-7"
                               aria-label={T("common.edit")}
                               disabled={!canEdit}
-                              onClick={() => setEditRule(rule)}
+                              onClick={() => {
+                                editReturnRef.current = document.activeElement as HTMLElement | null;
+                                setEditRule(rule);
+                              }}
                             >
                               <Pencil className="size-3.5" />
                             </Button>
@@ -178,6 +187,7 @@ export function RulesSection({ user }: { user?: SessionUser | null }) {
 
       <EditRuleDialog
         rule={editRule}
+        returnRef={editReturnRef}
         onClose={() => setEditRule(null)}
         onSave={(patch) => {
           if (editRule) patchMutation.mutate({ id: editRule.id, patch });
@@ -186,7 +196,7 @@ export function RulesSection({ user }: { user?: SessionUser | null }) {
         saving={patchMutation.isPending}
       />
 
-      <SelectorPreviewDialog rule={previewRule} onClose={() => setPreviewRule(null)} />
+      <SelectorPreviewDialog rule={previewRule} returnRef={previewReturnRef} onClose={() => setPreviewRule(null)} />
     </div>
   );
 }
@@ -195,11 +205,13 @@ export function RulesSection({ user }: { user?: SessionUser | null }) {
 
 function EditRuleDialog({
   rule,
+  returnRef,
   onClose,
   onSave,
   saving,
 }: {
   rule: SgRule | null;
+  returnRef: React.RefObject<HTMLElement | null>;
   onClose: () => void;
   onSave: (patch: { threshold?: number; windowSeconds?: number; cooldownSeconds?: number; severity?: Severity; enabled?: boolean }) => void;
   saving: boolean;
@@ -226,7 +238,16 @@ function EditRuleDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onCloseAutoFocus={(e) => {
+          // no DialogTrigger here — restore focus to the button that opened the dialog
+          if (returnRef.current) {
+            e.preventDefault();
+            returnRef.current.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
             {T("rules.editRule")}
@@ -326,7 +347,15 @@ function EditRuleDialog({
 
 /* --------------------------- Selector preview ---------------------------- */
 
-function SelectorPreviewDialog({ rule, onClose }: { rule: SgRule | null; onClose: () => void }) {
+function SelectorPreviewDialog({
+  rule,
+  returnRef,
+  onClose,
+}: {
+  rule: SgRule | null;
+  returnRef: React.RefObject<HTMLElement | null>;
+  onClose: () => void;
+}) {
   const T = useT();
 
   const preview = useQuery({
@@ -370,7 +399,16 @@ function SelectorPreviewDialog({ rule, onClose }: { rule: SgRule | null; onClose
 
   return (
     <Dialog open={!!rule} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        onCloseAutoFocus={(e) => {
+          // no DialogTrigger here — restore focus to the button that opened the dialog
+          if (returnRef.current) {
+            e.preventDefault();
+            returnRef.current.focus();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-sm">
             <FlaskConical className="size-4 text-emerald-600 dark:text-emerald-400" />

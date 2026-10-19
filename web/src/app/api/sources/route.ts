@@ -3,10 +3,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
-import { jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, jsonOk, unauthorized } from '@/lib/engine/http'
 import { SOURCE_REGISTRY } from '@/lib/engine/simulator'
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
 
@@ -65,4 +65,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       }
     })
   return jsonOk(data)
-}
+})

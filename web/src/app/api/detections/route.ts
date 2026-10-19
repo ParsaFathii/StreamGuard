@@ -4,16 +4,14 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
 import { SEVERITIES } from '@/lib/types'
-import {
-  invalidFilter, jsonOk, parsePagination, readEnumSingle, readIsoRange, readSafeString, unauthorized,
-} from '@/lib/engine/http'
+import { apiRoute, invalidFilter, jsonOk, parsePagination, readEnumSingle, readIsoRange, readSafeString, unauthorized } from '@/lib/engine/http'
 import { serializeDetection } from '@/lib/engine/serialize'
 import type { Prisma } from '@prisma/client'
 
 const RULE_ID_RE = /^SG-RULE-\d{3}$/
 const STATUSES = ['ACTIVE', 'SUPPRESSED'] as const
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   const url = new URL(req.url)
@@ -49,4 +47,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     db.detection.findMany({ where, orderBy: { createdAt: 'desc' }, skip: page.value.skip, take: page.value.take }),
   ])
   return jsonOk({ data: rows.map(serializeDetection), page: page.value.page, pageSize: page.value.pageSize, total })
-}
+})

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
 import { getSettings } from '@/lib/settings'
-import { jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, jsonOk, unauthorized } from '@/lib/engine/http'
 import { procStats } from '@/lib/engine/proc-stats'
 import { SEVERITIES, type Severity } from '@/lib/types'
 
@@ -17,7 +17,7 @@ async function wsUp(): Promise<boolean> {
   }
 }
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
 
@@ -41,7 +41,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     db.event.groupBy({ by: ['category'], where: { eventTime: { gte: since24h } }, _count: { _all: true } }),
     db.event.groupBy({ by: ['sourceId'], where: { eventTime: { gte: since24h } }, _count: { _all: true } }),
     db.event.findMany({ where: { ingestTime: { gte: since24h }, latencyMs: { not: null } }, select: { latencyMs: true }, take: 5000 }),
-    db.event.findFirst({ where: { status: 'PROCESSED' }, orderBy: { ingestTime: 'desc' }, select: { ingestTime: true } }),
+    // all stored events are PROCESSED (rejected ones never reach the Event
+    // table) — dropping the status filter lets the top-1 use the ingestTime index
+    db.event.findFirst({ orderBy: { ingestTime: 'desc' }, select: { ingestTime: true } }),
     wsUp(),
   ])
 
@@ -106,4 +108,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       queueDepth: 0,
     },
   })
-}
+})

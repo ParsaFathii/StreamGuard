@@ -4,14 +4,14 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { audit, createSession, sessionCookieOptions, verifyPassword } from '@/lib/auth'
-import { jsonError, jsonOk } from '@/lib/engine/http'
+import { apiRoute, jsonError, jsonOk } from '@/lib/engine/http'
 
 const Body = z.object({
   username: z.string().min(1).max(64),
   password: z.string().min(1).max(128),
 })
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   let parsed: unknown
   try {
     parsed = await req.json()
@@ -46,4 +46,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   })
   res.cookies.set({ ...sessionCookieOptions(), value: session.token })
   return res
-}
+})

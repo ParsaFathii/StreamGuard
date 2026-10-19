@@ -121,8 +121,12 @@ io.on('connection', (socket: Socket) => {
   })
 })
 
-httpServer.listen(PORT, () => {
-  console.log(`[stream] StreamGuard live stream service listening on port ${PORT} (socket.io path '/', HTTP /health + /emit)`)
+// Internal-only relay: binds loopback by default (CONTRACT §Real-time "internal only").
+// Set STREAM_BIND=0.0.0.0 to listen on all interfaces (container/remote demos);
+// the host gateway (e.g. Caddy) still proxies to 127.0.0.1:3003 by default.
+const BIND: string = process.env.STREAM_BIND ?? '127.0.0.1'
+httpServer.listen(PORT, BIND, () => {
+  console.log(`[stream] StreamGuard live stream service listening on ${BIND}:${PORT} (socket.io path '/', HTTP /health + /emit)`)
 })
 
 process.on('SIGTERM', () => {

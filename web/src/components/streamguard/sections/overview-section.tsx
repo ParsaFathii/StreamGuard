@@ -19,6 +19,7 @@ import {
   ChartTooltipShell,
   CHART,
   BarListRow,
+  useChartRtl,
 } from "../charts";
 import {
   ErrorState,
@@ -63,6 +64,7 @@ function windowDelta(d: MinuteSeries | undefined): number | null {
 export function OverviewSection({ user }: { user?: SessionUser | null }) {
   const T = useT();
   const openIncident = useUiStore((s) => s.openIncident);
+  const { xAxis, yAxis, mirrorMargin } = useChartRtl();
 
   const overview = useQuery({ queryKey: ["overview"], queryFn: api.analyticsOverview, refetchInterval: 30_000 });
   // timeseries: minute buckets only (points ≤ 240); deltas compare last 2h vs prior 2h
@@ -219,7 +221,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
             ) : (
               <div dir="ltr" className="h-48 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+                  <AreaChart data={chartData} margin={mirrorMargin({ top: 4, right: 8, bottom: 0, left: -18 })}>
                     <defs>
                       <linearGradient id="sg-ingest" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={CHART.emerald} stopOpacity={0.3} />
@@ -229,6 +231,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
                     <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="t"
+                      {...xAxis}
                       tickFormatter={(v: string) => fmtChartTick(v)}
                       stroke={CHART.axis}
                       tick={{ fill: CHART.axis, fontSize: 10 }}
@@ -237,7 +240,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
                       interval={9}
                       minTickGap={28}
                     />
-                    <YAxis stroke={CHART.axis} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis {...yAxis} stroke={CHART.axis} tickLine={false} axisLine={false} allowDecimals={false} />
                     <Tooltip
                       content={({ active, payload, label }) =>
                         active && payload?.length ? (
@@ -260,7 +263,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-md border border-border bg-card p-4">
               <h3 className="mb-2 text-[13px] font-medium">{T("overview.severityBreakdown")}</h3>
-              <div className="max-h-64 overflow-y-auto pe-1">
+              <div className="pe-1">
                 {severityEntries.map((e) => (
                   <BarListRow
                     key={e.key}
@@ -271,7 +274,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
                     }
                     value={e.count}
                     max={severityMax}
-                    color={CHART[ e.key === "critical" ? "rose" : e.key === "high" ? "orange" : e.key === "medium" ? "amber" : e.key === "low" ? "teal" : "slate"]}
+                    color={CHART[ e.key === "critical" ? "rose" : e.key === "high" ? "orange" : e.key === "medium" ? "amber" : e.key === "low" ? "lime" : "slate"]}
                     valueClassName={SEVERITY_UI[e.key].text}
                   />
                 ))}
@@ -279,7 +282,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
             </div>
             <div className="rounded-md border border-border bg-card p-4">
               <h3 className="mb-2 text-[13px] font-medium">{T("overview.categoryBreakdown")}</h3>
-              <div className="max-h-64 overflow-y-auto pe-1">
+              <div className="pe-1">
                 {categoryEntries.length === 0 && !loading ? (
                   <p className="py-6 text-center text-xs text-muted-foreground">{T("states.empty")}</p>
                 ) : (
@@ -302,7 +305,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
         <div className="space-y-4">
           <div className="rounded-md border border-border bg-card p-4">
             <h3 className="mb-2 text-[13px] font-medium">{T("overview.topSources")}</h3>
-            <div className="max-h-56 overflow-y-auto pe-1">
+            <div className="pe-1">
               {topSources.length === 0 ? (
                 <p className="py-6 text-center text-xs text-muted-foreground">{T("states.empty")}</p>
               ) : (
@@ -356,7 +359,7 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
             ) : (recentIncidents.data?.data.length ?? 0) === 0 ? (
               <p className="py-4 text-center text-xs text-muted-foreground">{T("overview.noRecentIncidents")}</p>
             ) : (
-              <ul className="max-h-72 space-y-1 overflow-y-auto pe-1">
+              <ul className="space-y-1 pe-1">
                 {recentIncidents.data!.data.map((inc, i) => (
                   <motion.li
                     key={inc.id}
@@ -370,11 +373,11 @@ export function OverviewSection({ user }: { user?: SessionUser | null }) {
                       title={`${inc.id} — ${inc.title}`}
                       className="flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-start transition-colors hover:border-border hover:bg-secondary/60"
                     >
-                      <SeverityDot severity={inc.severity} />
+                      <SeverityDot severity={inc.severity} className="mt-1" />
                       <span dir="ltr" className="sg-num shrink-0 text-[11px] text-muted-foreground">
                         {inc.id}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-xs">{inc.title}</span>
+                      <span className="line-clamp-2 min-w-0 flex-1 break-words text-xs leading-snug">{inc.title}</span>
                       <IncidentStatusChip status={inc.status} className="hidden sm:inline-flex" />
                       <TimeAgo iso={inc.updatedAt} className="shrink-0 text-[10px] text-muted-foreground" />
                     </button>

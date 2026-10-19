@@ -40,7 +40,7 @@ export function PaginationFooter({
           <div className="flex items-center gap-1.5">
             <span className="hidden sm:inline">{T("common.perPage")}</span>
             <Select value={String(pageSize)} onValueChange={(v) => onPageSize(Number(v))}>
-              <SelectTrigger size="sm" className="h-7 w-[72px] font-mono text-[11px]" aria-label={T("common.perPage")}>
+              <SelectTrigger size="sm" className="h-8 w-[72px] font-mono text-[11px] max-sm:h-11 max-sm:w-20" aria-label={T("common.perPage")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -58,11 +58,25 @@ export function PaginationFooter({
           <span dir="ltr" className="sg-num">{pages}</span>
         </span>
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" className="size-7" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label={T("common.prev")}>
-            <ChevronLeft className="size-3.5" />
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-7 max-sm:size-11"
+            disabled={page <= 1}
+            onClick={() => onPage(page - 1)}
+            aria-label={T("common.prev")}
+          >
+            <ChevronLeft className="size-3.5 rtl:-scale-x-100" />
           </Button>
-          <Button variant="outline" size="icon" className="size-7" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label={T("common.next")}>
-            <ChevronRight className="size-3.5" />
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-7 max-sm:size-11"
+            disabled={page >= pages}
+            onClick={() => onPage(page + 1)}
+            aria-label={T("common.next")}
+          >
+            <ChevronRight className="size-3.5 rtl:-scale-x-100" />
           </Button>
         </div>
       </div>

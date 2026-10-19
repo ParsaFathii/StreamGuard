@@ -189,8 +189,9 @@ export function SourcesSection({ user }: { user: SessionUser }) {
             {canIngest ? (
               <div className="grid grid-cols-2 gap-2.5">
                 <div className="space-y-1">
-                  <Label className="text-[11px]">{T("sources.sourceId")}</Label>
+                  <Label htmlFor="sg-test-source-id" className="text-[11px]">{T("sources.sourceId")}</Label>
                   <Input
+                    id="sg-test-source-id"
                     dir="ltr"
                     value={form.sourceId}
                     onChange={(e) => setForm((f) => ({ ...f, sourceId: e.target.value }))}
@@ -224,8 +225,9 @@ export function SourcesSection({ user }: { user: SessionUser }) {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px]">{T("common.message")}</Label>
+                  <Label htmlFor="sg-test-message" className="text-[11px]">{T("common.message")}</Label>
                   <Input
+                    id="sg-test-message"
                     value={form.message}
                     onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                     placeholder={T("sources.messagePlaceholder")}

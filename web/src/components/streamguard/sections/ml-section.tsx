@@ -37,7 +37,7 @@ import {
   StatusChip,
   useT,
 } from "../primitives";
-import { CHART, ChartTooltipShell } from "../charts";
+import { CHART, ChartTooltipShell, useChartRtl } from "../charts";
 import { fmtChartTick, fmtFull } from "../time";
 
 const IFORST_THRESHOLD = 0.61; // documented model threshold (CONTRACT.md)
@@ -46,6 +46,7 @@ export function MlSection({ user }: { user: SessionUser }) {
   const T = useT();
   const qc = useQueryClient();
   const canRun = isAnalystPlus(user.role);
+  const { rtl, xAxis, yAxis, mirrorMargin } = useChartRtl();
 
   const ml = useQuery({ queryKey: ["ml"], queryFn: api.ml, refetchInterval: 60_000 });
 
@@ -115,7 +116,7 @@ export function MlSection({ user }: { user: SessionUser }) {
             </div>
             <div className="rounded-md border border-border bg-card p-3">
               <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{T("ml.features")}</p>
-              <p dir="ltr" className="mt-1 font-mono text-[10px] leading-snug text-muted-foreground">{T("ml.featuresList")}</p>
+              <p dir="ltr" className="mt-1 font-mono text-[10px] leading-relaxed text-muted-foreground">{T("ml.featuresList")}</p>
             </div>
             <div className="rounded-md border border-border bg-card p-3">
               <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{T("ml.anomalyThreshold")}</p>
@@ -133,18 +134,50 @@ export function MlSection({ user }: { user: SessionUser }) {
             ) : (
               <div dir="ltr" className="h-56 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
+                  <ComposedChart data={chartData} margin={mirrorMargin({ top: 4, right: 12, bottom: 0, left: 8 })}>
                     <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
                     <XAxis
                       dataKey="t"
+                      {...xAxis}
                       tickFormatter={(v: string) => fmtChartTick(v)}
                       stroke={CHART.axis}
+                      tick={{ fill: CHART.axis, fontSize: 10 }}
                       tickLine={false}
                       axisLine={{ stroke: CHART.grid }}
-                      minTickGap={48}
+                      interval="preserveStartEnd"
+                      minTickGap={64}
                     />
-                    <YAxis yAxisId="rate" stroke={CHART.axis} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <YAxis yAxisId="score" orientation="right" domain={[0, 1]} stroke={CHART.axis} tickLine={false} axisLine={false} />
+                    {/* each Y axis is color-coded to its series and titled — no ambiguity which line belongs to which scale */}
+                    <YAxis
+                      yAxisId="rate"
+                      {...yAxis}
+                      stroke={CHART.emerald}
+                      tick={{ fill: CHART.emerald, fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                      label={{
+                        value: T("ml.rateAxis"),
+                        angle: rtl ? 90 : -90,
+                        position: rtl ? "insideRight" : "insideLeft",
+                        style: { fill: CHART.emerald, fontSize: 10 },
+                      }}
+                    />
+                    <YAxis
+                      yAxisId="score"
+                      orientation={rtl ? "left" : "right"}
+                      domain={[0, 1]}
+                      stroke={CHART.teal}
+                      tick={{ fill: CHART.teal, fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      label={{
+                        value: T("ml.scoreAxis"),
+                        angle: rtl ? -90 : 90,
+                        position: rtl ? "insideLeft" : "insideRight",
+                        style: { fill: CHART.teal, fontSize: 10 },
+                      }}
+                    />
                     <Tooltip
                       content={({ active, payload, label }) =>
                         active && payload?.length ? (
@@ -160,6 +193,7 @@ export function MlSection({ user }: { user: SessionUser }) {
                       }
                     />
                     <Legend
+                      align={rtl ? "right" : "center"}
                       wrapperStyle={{ fontSize: 11, fontFamily: "var(--font-geist-mono), monospace" }}
                     />
                     <ReferenceLine yAxisId="score" y={IFORST_THRESHOLD} stroke={CHART.amber} strokeDasharray="4 4" />

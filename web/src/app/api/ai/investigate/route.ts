@@ -13,8 +13,8 @@ import ZAI from 'z-ai-web-dev-sdk'
 import { db } from '@/lib/db'
 import { audit, requireRole, requireSession } from '@/lib/auth'
 import { getSettings } from '@/lib/settings'
-import { forbidden, jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
-import { computeMlView } from '@/lib/engine/ml'
+import { apiRoute, forbidden, jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
+import { computeMlViewCached } from '@/lib/engine/ml'
 import { countLlmFailure, countLlmRequest } from '@/lib/engine/proc-stats'
 
 const INC_ID_RE = /^INC-\d{1,6}$/
@@ -68,7 +68,7 @@ function clip(s: string, n: number): string {
   return s.length <= n ? s : `${s.slice(0, n)}…`
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN', 'ANALYST')) return forbidden()
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     : []
   const events = eventRows.slice(0, 50)
   const rule = await db.rule.findUnique({ where: { id: incident.ruleId } })
-  const mlView = await computeMlView(120)
+  const mlView = await computeMlViewCached(120)
   const relevantBaseline = mlView.currentBaselines.find((b) => incident.correlationKey === 'global' || b.sourceId === incident.correlationKey)
   const recentAnomalies = mlView.anomalyTimeline.filter((p) => p.isAnomaly).slice(-8)
 
@@ -197,4 +197,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     provider: { name: settings.aiProvider, model, status: 'ok' as const },
     durationMs,
   })
-}
+})

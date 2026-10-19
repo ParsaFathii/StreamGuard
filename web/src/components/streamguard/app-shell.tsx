@@ -352,7 +352,7 @@ function Rail({ user }: { user: SessionUser }) {
               {wsStatus === "live" ? T("topbar.live") : wsStatus}
             </span>
           </span>
-          <span dir="ltr" className="shrink-0 font-mono text-[10px] text-muted-foreground">
+          <span dir="ltr" className="shrink-0 font-mono text-[11px] text-muted-foreground">
             v{apiVersion ? apiVersion.replace(/^v/, "") : "10.3.2"}
           </span>
         </div>
@@ -491,7 +491,7 @@ function FooterBar() {
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: api.settings, staleTime: 120_000 });
 
   return (
-    <footer className="flex h-8 shrink-0 items-center gap-3 border-t border-border bg-sidebar px-3 font-mono text-[10px] text-muted-foreground sm:px-4">
+    <footer className="flex h-8 shrink-0 items-center gap-3 border-t border-border bg-sidebar px-3 font-mono text-[11px] text-muted-foreground sm:px-4">
       <span className="text-emerald-600 dark:text-emerald-400">{apiVersion ? `v${apiVersion.replace(/^v/, "")}` : "v10.3.2"}</span>
       <span className="text-border">·</span>
       <span dir="ltr">

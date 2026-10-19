@@ -4,18 +4,18 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
 import { SEVERITIES } from '@/lib/types'
-import {
-  invalidFilter, jsonOk, parsePagination, readEnumMulti, readEnumSingle, readIsoRange, readSafeString, unauthorized,
-} from '@/lib/engine/http'
+import { apiRoute, invalidFilter, jsonOk, parsePagination, readEnumMulti, readEnumSingle, readIsoRange, readSafeString, unauthorized } from '@/lib/engine/http'
 import { serializeIncident } from '@/lib/engine/serialize'
 import type { Prisma } from '@prisma/client'
 
 const STATUSES = ['NEW', 'TRIAGED', 'INVESTIGATING', 'RESOLVED', 'CLOSED'] as const
 const SORTS = ['createdAt', 'severity', 'updatedAt'] as const
+// severity rank order for sort=severity (lexical TEXT order would rank medium > low > info > high > critical)
+const SEV_RANK: Record<string, number> = { info: 0, low: 1, medium: 2, high: 3, critical: 4 }
 const RULE_ID_RE = /^SG-RULE-\d{3}$/
 const INC_ID_RE = /^INC-\d{1,6}$/
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   const url = new URL(req.url)
@@ -55,12 +55,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const sortKey = sort.value ?? 'createdAt'
-  const orderBy: Prisma.IncidentOrderByWithRelationInput =
-    sortKey === 'severity' ? { severity: 'desc' as const, updatedAt: 'desc' as const } : { [sortKey]: 'desc' as const }
+  const orderBy: Prisma.IncidentOrderByWithRelationInput[] =
+    sortKey === 'severity' ? [{ severity: 'desc' as const }, { updatedAt: 'desc' as const }] : [{ [sortKey]: 'desc' as const }]
+
+  if (sortKey === 'severity') {
+    // rank-order in memory (SQLite TEXT order is lexical: medium > low > info > high > critical).
+    // Demo scale (<= hundreds of incidents) — full fetch + in-memory sort + manual slice is fine.
+    const all = await db.incident.findMany({ where, orderBy: { updatedAt: 'desc' } })
+    all.sort(
+      (a, b) => (SEV_RANK[b.severity] ?? -1) - (SEV_RANK[a.severity] ?? -1)
+        || b.updatedAt.getTime() - a.updatedAt.getTime(),
+    )
+    const rows = all.slice(page.value.skip, page.value.skip + page.value.take)
+    return jsonOk({ data: rows.map(serializeIncident), page: page.value.page, pageSize: page.value.pageSize, total: all.length })
+  }
 
   const [total, rows] = await Promise.all([
     db.incident.count({ where }),
     db.incident.findMany({ where, orderBy, skip: page.value.skip, take: page.value.take }),
   ])
   return jsonOk({ data: rows.map(serializeIncident), page: page.value.page, pageSize: page.value.pageSize, total })
-}
+})

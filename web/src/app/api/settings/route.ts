@@ -5,15 +5,15 @@ import { z } from 'zod'
 import { db } from '@/lib/db'
 import { audit, requireRole, requireSession } from '@/lib/auth'
 import { DEFAULT_SETTINGS, getSettings, invalidateSettingsCache } from '@/lib/settings'
-import { forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   const s = await getSettings()
   // no secrets are stored in app settings at all (shape is public below)
   return jsonOk({ ...s })
-}
+})
 
 const PatchBody = z
   .object({
@@ -28,7 +28,7 @@ const PatchBody = z
   .strict()
   .refine((v) => Object.keys(v).length > 0, { message: 'at least one field is required' })
 
-export async function PATCH(req: NextRequest): Promise<NextResponse> {
+export const PATCH = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN')) return forbidden()
@@ -64,4 +64,4 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
     details: changes,
   })
   return jsonOk({ ...merged, defaults: DEFAULT_SETTINGS })
-}
+})

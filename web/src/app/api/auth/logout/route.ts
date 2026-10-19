@@ -2,9 +2,9 @@
 // Copyright © 2026 Parsa Fathi — Apache-2.0
 import { NextResponse, type NextRequest } from 'next/server'
 import { audit, destroySession, requireSession, sessionCookieOptions } from '@/lib/auth'
-import { jsonOk } from '@/lib/engine/http'
+import { apiRoute, jsonOk } from '@/lib/engine/http'
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (session) {
     await destroySession(session.token)
@@ -13,4 +13,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const res = jsonOk({ ok: true })
   res.cookies.set({ ...sessionCookieOptions(), value: '', maxAge: 0 })
   return res
-}
+})

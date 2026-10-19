@@ -3,10 +3,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
-import { jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
+import { apiRoute, jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
 import { serializeEvent } from '@/lib/engine/serialize'
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+export const GET = apiRoute<{ params: Promise<{ id: string }> }>(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   const { id } = await params
@@ -14,4 +14,4 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const row = await db.event.findUnique({ where: { id } })
   if (!row) return notFound('event')
   return jsonOk(serializeEvent(row))
-}
+})

@@ -11,11 +11,13 @@ import {
 } from "recharts";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useIsRtl } from "./primitives";
 
 export const CHART = {
   emerald: "#10B981",
   emeraldSoft: "#34D399",
   teal: "#2DD4BF",
+  lime: "#84CC16",
   amber: "#FBBF24",
   orange: "#F97316",
   rose: "#F43F5E",
@@ -23,6 +25,24 @@ export const CHART = {
   grid: "#1F2B26",
   axis: "#8CA39A",
 };
+
+/**
+ * RTL mirroring for recharts: when the console language is FA (dir=rtl),
+ * the X axis is reversed (time flows right→left) and the Y axis moves to
+ * the right edge, matching the mirrored page. Spread `xAxis` / `yAxis` onto
+ * the axes and pass margins through `mirrorMargin`.
+ */
+export function useChartRtl() {
+  const rtl = useIsRtl();
+  return {
+    rtl,
+    xAxis: { reversed: rtl },
+    yAxis: { orientation: rtl ? ("right" as const) : ("left" as const) },
+    /** Swap the horizontal components of an LTR-designed chart margin. */
+    mirrorMargin: (m: { top?: number; right?: number; bottom?: number; left?: number }) =>
+      rtl ? { top: m.top, right: m.left, bottom: m.bottom, left: m.right } : m,
+  };
+}
 
 export function ChartTooltipShell({ children }: { children: ReactNode }) {
   return (

@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Copy, Check } from "lucide-react";
 import { useState } from "react";
+import { useT } from "./primitives";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -42,6 +43,7 @@ export function JsonViewer({
   label?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const T = useT();
   const html = useMemo(() => highlight(JSON.stringify(value ?? null, null, 2)), [value]);
 
   const onCopy = async () => {
@@ -60,7 +62,7 @@ export function JsonViewer({
         <button
           type="button"
           onClick={onCopy}
-          aria-label="Copy JSON"
+          aria-label={T("common.copyJson")}
           className="absolute end-1.5 top-1.5 z-10 rounded border border-border bg-secondary/80 p-1 text-muted-foreground transition-colors hover:text-foreground"
         >
           {copied ? <Check className="size-3 text-emerald-600 dark:text-emerald-400" /> : <Copy className="size-3" />}
@@ -68,7 +70,7 @@ export function JsonViewer({
       )}
       <pre
         dir="ltr"
-        className={cn("sg-json overflow-auto p-3 font-mono text-[11px] leading-relaxed text-foreground/90")}
+        className={cn("sg-json max-w-full overflow-auto p-3 font-mono text-[11px] leading-relaxed [overflow-wrap:anywhere] text-foreground/90")}
         style={maxHeight ? { maxHeight } : undefined}
         aria-label={label}
         dangerouslySetInnerHTML={{ __html: html }}

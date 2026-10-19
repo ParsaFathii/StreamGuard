@@ -5,12 +5,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { requireRole, requireSession } from '@/lib/auth'
-import { forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
 import { runEvaluation } from '@/lib/engine/ml'
 
 const Body = z.object({ seed: z.number().int().min(1).max(2_147_483_647).optional() })
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN', 'ANALYST')) return forbidden()
@@ -30,4 +30,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const evaluation = await runEvaluation(seed)
   return jsonOk(evaluation)
-}
+})

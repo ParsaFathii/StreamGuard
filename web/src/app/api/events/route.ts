@@ -4,10 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
 import { CATEGORIES, SEVERITIES, SOURCE_TYPES } from '@/lib/types'
-import {
-  invalidFilter, jsonError, jsonOk, parsePagination, readEnumMulti, readEnumSingle,
-  readIsoRange, readSafeString, unauthorized,
-} from '@/lib/engine/http'
+import { apiRoute, invalidFilter, jsonError, jsonOk, parsePagination, readEnumMulti, readEnumSingle, readIsoRange, readSafeString, unauthorized } from '@/lib/engine/http'
 import { serializeEvent } from '@/lib/engine/serialize'
 import type { Prisma } from '@prisma/client'
 
@@ -17,7 +14,7 @@ const INC_ID_RE = /^INC-\d{1,6}$/
 const STATUSES = ['VALIDATED', 'REJECTED', 'PROCESSED'] as const
 const ORIGINS = ['synthetic', 'external'] as const
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   const url = new URL(req.url)
@@ -38,8 +35,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const range = readIsoRange(url)
   if (range.error) return invalidFilter(range.error.includes('from') ? 'from' : 'to', range.error)
 
-  const q = url.searchParams.get('q')
-  if (q !== null && q.trim().length < 2) return invalidFilter('q', 'q must be at least 2 characters')
+  const qRaw = url.searchParams.get('q')
+  if (qRaw !== null && qRaw.trim().length < 2) return invalidFilter('q', 'q must be at least 2 characters')
+  // strip SQL LIKE wildcards so q=%%% cannot match the whole table
+  const q = qRaw !== null ? qRaw.replace(/[%_]/g, ' ') : null
 
   const sourceId = readSafeString(url, 'sourceId', 64)
   if (sourceId.error) return invalidFilter('sourceId', sourceId.error)
@@ -116,8 +115,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }),
   ])
   return jsonOk({ data: rows.map(serializeEvent), page: page.value.page, pageSize: page.value.pageSize, total })
-}
+})
 
-export async function POST(): Promise<NextResponse> {
+export const POST = apiRoute(async (): Promise<NextResponse> => {
   return jsonError(405, 'METHOD_NOT_ALLOWED', 'Use GET /api/events')
-}
+})

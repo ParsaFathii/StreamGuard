@@ -3,13 +3,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { audit, requireRole, requireSession } from '@/lib/auth'
-import { forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
 import { generateTick, mulberry32 } from '@/lib/engine/simulator'
 import { ingestEvents } from '@/lib/engine/pipeline'
 
 const Body = z.object({ count: z.number().int().min(1).max(50).optional() })
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN', 'ANALYST')) return forbidden()
@@ -40,4 +40,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     details: { generated: raws.length, accepted: result.accepted },
   })
   return jsonOk({ generated: raws.length, eventIds: result.eventIds, accepted: result.accepted, duplicates: result.duplicates, rejected: result.rejected })
-}
+})

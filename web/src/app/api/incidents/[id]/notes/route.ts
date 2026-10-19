@@ -4,12 +4,12 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
 import { audit, requireRole, requireSession } from '@/lib/auth'
-import { forbidden, jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, jsonError, jsonOk, notFound, unauthorized } from '@/lib/engine/http'
 
 const INC_ID_RE = /^INC-\d{1,6}$/
 const Body = z.object({ body: z.string().min(1).max(4000) })
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+export const POST = apiRoute<{ params: Promise<{ id: string }> }>(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN', 'ANALYST')) return forbidden()
@@ -41,4 +41,4 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     details: { noteId: note.id, length: body.data.body.length },
   })
   return jsonOk({ id: note.id, incidentId: id, author: note.author, body: note.body, createdAt: note.createdAt.toISOString() })
-}
+})

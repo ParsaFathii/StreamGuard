@@ -192,12 +192,12 @@ export function LiveStreamSection({ user }: { user?: SessionUser | null }) {
                   {fmtTime(ev.eventTime)}
                 </span>
                 <SeverityDot severity={ev.severity} />
-                <span className="w-16 shrink-0 truncate font-mono text-[10px] text-muted-foreground">{ev.category}</span>
-                <span dir="ltr" className="w-28 shrink-0 truncate font-mono text-[11px]">{ev.sourceId}</span>
-                <span dir="ltr" className="hidden w-24 shrink-0 truncate font-mono text-[11px] text-muted-foreground lg:block">
+                <span dir="ltr" title={ev.category} className="w-16 shrink-0 truncate font-mono text-[10px] text-muted-foreground">{ev.category}</span>
+                <span dir="ltr" title={ev.sourceId} className="w-36 shrink-0 truncate font-mono text-[11px]">{ev.sourceId}</span>
+                <span dir="ltr" title={ev.actor ?? "—"} className="hidden w-28 shrink-0 truncate font-mono text-[11px] text-muted-foreground lg:block">
                   {ev.actor ?? "—"}
                 </span>
-                <span className="min-w-0 flex-1 truncate">{ev.message}</span>
+                <span title={ev.message} className="min-w-0 flex-1 truncate">{ev.message}</span>
                 {ev.origin === "synthetic" && <OriginBadge origin={ev.origin} />}
               </li>
             ))}

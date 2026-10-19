@@ -13,22 +13,38 @@ export interface RetentionResult {
   deleted: number
   protectedEvents: number
   cutoff: string
+  detectionsDeleted: number
+  validationFailuresDeleted: number
+  sessionsSwept: number
 }
 
 export async function runRetention(now = new Date()): Promise<RetentionResult> {
   const settings = await getSettings()
   const cutoff = new Date(now.getTime() - settings.retentionHours * 3600 * 1000)
 
-  // events linked to non-CLOSED incidents must never be deleted
+  // events linked to non-CLOSED incidents must never be deleted.
+  // The protected-links query is looped to exhaustion: a single take-capped
+  // fetch would silently truncate the protected set past 20k links and let
+  // the doomed query delete events that are attached to open incidents.
   const openIncidents = await db.incident.findMany({ where: { status: { not: 'CLOSED' } }, select: { id: true } })
   let protectedIds: string[] = []
   if (openIncidents.length > 0) {
-    const links = await db.incidentEvent.findMany({
-      where: { incidentId: { in: openIncidents.map((i) => i.id) } },
-      select: { eventId: true },
-      take: 20000,
-    })
-    protectedIds = Array.from(new Set(links.map((l) => l.eventId)))
+    const incidentIds = openIncidents.map((i) => i.id)
+    const seen = new Set<string>()
+    let offset = 0
+    for (;;) {
+      const links = await db.incidentEvent.findMany({
+        where: { incidentId: { in: incidentIds } },
+        select: { eventId: true },
+        orderBy: { id: 'asc' }, // deterministic pagination
+        skip: offset,
+        take: 20000,
+      })
+      for (const l of links) seen.add(l.eventId)
+      offset += links.length
+      if (links.length < 20000) break
+    }
+    protectedIds = Array.from(seen)
   }
 
   const doomed = await db.event.findMany({
@@ -37,12 +53,47 @@ export async function runRetention(now = new Date()): Promise<RetentionResult> {
     take: 20000,
   })
   let deletedCount = 0
+  let detectionsDeleted = 0
   if (doomed.length > 0) {
     const doomedIds = doomed.map((d) => d.id)
-    await db.event.deleteMany({ where: { id: { in: doomedIds } } })
+    // incidents whose links reference doomed events (denormalized counters must be recomputed)
+    const affectedIncidentIds = new Set<string>()
+    let affOffset = 0
+    for (;;) {
+      const affected = await db.incidentEvent.findMany({
+        where: { eventId: { in: doomedIds } },
+        select: { incidentId: true },
+        orderBy: { id: 'asc' }, // deterministic pagination
+        skip: affOffset,
+        take: 20000,
+      })
+      for (const l of affected) affectedIncidentIds.add(l.incidentId)
+      affOffset += affected.length
+      if (affected.length < 20000) break
+    }
+    // Detection.eventId has no FK — purge rows that would dangle after the event delete
+    const det = await db.detection.deleteMany({ where: { eventId: { in: doomedIds } } })
+    detectionsDeleted = det.count
     await db.incidentEvent.deleteMany({ where: { eventId: { in: doomedIds } } }) // purge orphan links
+    await db.event.deleteMany({ where: { id: { in: doomedIds } } })
     deletedCount = doomedIds.length
+    // recompute eventCount/detectionCount from the surviving rows so incident
+    // counters never freeze at pre-sweep values
+    for (const incidentId of affectedIncidentIds) {
+      const [eventCount, detectionCount] = await Promise.all([
+        db.incidentEvent.count({ where: { incidentId } }),
+        db.detection.count({ where: { incidentId } }),
+      ])
+      await db.incident.update({ where: { id: incidentId }, data: { eventCount, detectionCount } }).catch(() => undefined)
+    }
   }
+
+  // same-policy cleanup: ValidationFailure rows older than the cutoff (bounded
+  // growth) and expired sessions (never swept elsewhere)
+  const vf = await db.validationFailure.deleteMany({ where: { ts: { lt: cutoff } } })
+  const validationFailuresDeleted = vf.count
+  const ses = await db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } })
+  const sessionsSwept = ses.count
 
   // state keeps the per-run deletedCount and a cumulative totalDeleted (durable)
   const prev = await getRetentionState()
@@ -57,9 +108,23 @@ export async function runRetention(now = new Date()): Promise<RetentionResult> {
     role: 'SYSTEM',
     action: 'retention.run',
     targetType: 'retention',
-    details: { deletedCount, protectedEvents: protectedIds.length, cutoff: cutoff.toISOString() },
+    details: {
+      deletedCount,
+      protectedEvents: protectedIds.length,
+      cutoff: cutoff.toISOString(),
+      detectionsDeleted,
+      validationFailuresDeleted,
+      sessionsSwept,
+    },
   })
-  return { deleted: deletedCount, protectedEvents: protectedIds.length, cutoff: cutoff.toISOString() }
+  return {
+    deleted: deletedCount,
+    protectedEvents: protectedIds.length,
+    cutoff: cutoff.toISOString(),
+    detectionsDeleted,
+    validationFailuresDeleted,
+    sessionsSwept,
+  }
 }
 
 // ---- automatic check (at most every 5 min, triggered by ingest) ----

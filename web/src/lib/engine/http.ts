@@ -1,6 +1,6 @@
 // StreamGuard — shared HTTP helpers for API routes.
 // Copyright © 2026 Parsa Fathi — Apache-2.0
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export const API_VERSION = '10.3.2'
 
@@ -14,6 +14,23 @@ export function jsonOk(data: unknown, status = 200, headers?: Record<string, str
 
 export function jsonError(status: number, code: string, message: string, headers?: Record<string, string>): NextResponse {
   return NextResponse.json({ error: { code, message } }, { status, headers: versionHeaders(headers) })
+}
+
+/**
+ * Uniform route-handler safety net: any unhandled throw becomes a contract-
+ * shaped 500 `{error:{code:'INTERNAL',...}}` instead of Next.js' empty body.
+ * Preserves behavior exactly — it only adds the catch-all.
+ * For dynamic routes pass the ctx type: `apiRoute<{ params: Promise<{ id: string }> }>`.
+ */
+export function apiRoute<C = unknown>(fn: (req: NextRequest, ctx: C) => Promise<Response>) {
+  return async (req: NextRequest, ctx: C): Promise<Response> => {
+    try {
+      return await fn(req, ctx)
+    } catch (err) {
+      console.error('[api] unhandled error', err)
+      return jsonError(500, 'INTERNAL', 'Internal server error')
+    }
+  }
 }
 
 export const unauthorized = (): NextResponse => jsonError(401, 'UNAUTHORIZED', 'Authentication required')

@@ -16,7 +16,7 @@
 import crypto from 'node:crypto'
 import { db } from '@/lib/db'
 import { mulberry32, type Rng } from '@/lib/engine/simulator'
-import { attrValue, severityWeight, toStored, type StoredEvent } from '@/lib/engine/types'
+import { attrValue, severityWeight, type StoredEvent } from '@/lib/engine/types'
 import { loadRuleDefs, runRulesPure } from '@/lib/engine/rules'
 import type { MethodMetrics } from '@/lib/types'
 
@@ -255,8 +255,33 @@ function groupBuckets(events: StoredEvent[], minutes: number): Map<string, Sampl
 
 export async function computeMlView(minutes = 120): Promise<MlView> {
   const since = new Date(Date.now() - minutes * 60_000)
-  const rows = await db.event.findMany({ where: { eventTime: { gte: since } }, take: 20000 })
-  const events = rows.map(toStored).sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime())
+  // select only the columns the feature builder reads (eventTime, sourceId,
+  // category, severity, actor, attributes) — full rows would carry message +
+  // metadata columns for up to 20k events per call
+  const rows = await db.event.findMany({
+    where: { eventTime: { gte: since } },
+    select: { eventTime: true, sourceId: true, category: true, severity: true, actor: true, attributesJson: true },
+    take: 20000,
+  })
+  const events: StoredEvent[] = rows.map((r) => {
+    let attributes: Record<string, unknown> = {}
+    try {
+      attributes = r.attributesJson ? (JSON.parse(r.attributesJson) as Record<string, unknown>) : {}
+    } catch {
+      attributes = {}
+    }
+    return {
+      id: '', // not read by the feature builder (StoredEvent shape placeholder)
+      eventTime: r.eventTime,
+      sourceId: r.sourceId,
+      sourceType: '', // not read by the feature builder
+      severity: r.severity,
+      category: r.category,
+      message: '', // not read by the feature builder
+      attributes,
+      actor: r.actor,
+    }
+  }).sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime())
 
   // global per-minute timeline (zero-filled; idle minutes are not scored — documented)
   const firstMinute = minuteFloor(new Date(Date.now() - (minutes - 1) * 60_000)).getTime()
@@ -322,6 +347,31 @@ export async function computeMlView(minutes = 120): Promise<MlView> {
   baselines.sort((a, b) => Math.abs(b.zscore) - Math.abs(a.zscore))
 
   return { modelVersion: MODEL_VERSION, method: 'Isolation Forest + EWMA z-score', anomalyTimeline: timeline, currentBaselines: baselines }
+}
+
+// ---------- 5s TTL cache (HMR-safe, shared by /api/analytics/ml and /api/ai/investigate) ----------
+
+interface MlViewCacheEntry {
+  at: number
+  minutes: number
+  promise: Promise<MlView>
+}
+const mlCacheGlobal = globalThis as unknown as { __sgMlViewCache?: MlViewCacheEntry }
+const ML_CACHE_TTL_MS = 5000
+
+/** Cached ML view: recomputed at most every 5 s per process (both API callers share it). */
+export function computeMlViewCached(minutes = 120): Promise<MlView> {
+  const cached = mlCacheGlobal.__sgMlViewCache
+  if (cached && cached.minutes === minutes && Date.now() - cached.at < ML_CACHE_TTL_MS) {
+    return cached.promise
+  }
+  const promise = computeMlView(minutes)
+  mlCacheGlobal.__sgMlViewCache = { at: Date.now(), minutes, promise }
+  promise.catch(() => {
+    // never serve a cached rejection
+    if (mlCacheGlobal.__sgMlViewCache?.promise === promise) mlCacheGlobal.__sgMlViewCache = undefined
+  })
+  return promise
 }
 
 // ---------- latest stored evaluation ----------

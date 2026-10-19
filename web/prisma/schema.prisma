@@ -34,14 +34,12 @@ model Session {
 
 model IngestKey {
   id         String    @id @default(cuid())
-  keyId      String    @unique // public identifier, e.g. demo-key-01
+  keyId      String    @unique // public identifier, e.g. demo-key-01 (unique index covers lookups)
   keyHash    String
   active     Boolean   @default(true)
   name       String
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?
-
-  @@index([keyId])
 }
 
 model Event {
@@ -71,6 +69,9 @@ model Event {
   @@index([correlationId])
   @@index([status])
   @@index([actor])
+  @@index([traceId])
+  @@index([actor, eventTime])
+  @@index([sourceId, eventTime])
 }
 
 model ValidationFailure {
@@ -80,6 +81,8 @@ model ValidationFailure {
   reason        String
   details       String   @default("{}")
   payloadSample String? // truncated sample (max 256 chars, no secrets)
+
+  @@index([ts])
 }
 
 model Rule {
@@ -129,6 +132,7 @@ model Detection {
   @@index([createdAt])
   @@index([incidentId])
   @@index([status])
+  @@index([ruleId, status, createdAt])
 }
 
 model Incident {
@@ -154,6 +158,8 @@ model Incident {
   @@index([ruleId])
   @@index([severity])
   @@index([updatedAt])
+  @@index([createdAt])
+  @@index([ruleId, correlationKey, updatedAt])
 }
 
 model IncidentEvent {

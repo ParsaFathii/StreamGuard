@@ -55,6 +55,7 @@ analytics sidecar + this console in Go-backed mode).
 | `DATABASE_URL` | `file:./db/console.db` | SQLite path (embedded edition) |
 | `NEXT_PUBLIC_API_BASE` | *(empty)* | Go service base URL (Go-backed mode) |
 | `NEXT_PUBLIC_LIVE_TRANSPORT` | `socketio` | `socketio` (demo) or `sse` (Go) |
+| `STREAM_BIND` *(relay)* | `127.0.0.1` | Bind address for `mini-services/stream`; set `0.0.0.0` for containers/remote demos |
 
 ## Scripts
 
@@ -68,7 +69,8 @@ analytics sidecar + this console in Go-backed mode).
 
 - Demo edition: `io("/?XTransformPort=3003")` — the relay service
   (`mini-services/stream`) receives server-side POSTs on `/emit` and fans out
-  to browsers.
+  to browsers. The relay binds loopback only by default (internal service);
+  `STREAM_BIND=0.0.0.0` makes it reachable from other hosts/containers.
 - Go-backed mode: `EventSource(`${API_BASE}/api/stream`)` — SSE events named
   after the channels (`event:new`, `detection:new`, `incident:new`,
   `incident:update`, `stats`, `simulator`) with identical payload shapes.

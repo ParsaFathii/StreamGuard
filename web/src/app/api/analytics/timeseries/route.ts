@@ -3,11 +3,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
-import { invalidFilter, jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, invalidFilter, jsonOk, unauthorized } from '@/lib/engine/http'
 
 const METRICS = ['events', 'detections', 'rejected'] as const
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   const url = new URL(req.url)
@@ -53,4 +53,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     data.push({ bucketStart: new Date(m).toISOString(), value: perMinute.get(m) ?? 0 })
   }
   return jsonOk(data)
-}
+})

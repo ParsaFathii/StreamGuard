@@ -233,6 +233,7 @@ async function inCooldown(rule: RuleDef, cv: string, ctx: EngineCtx): Promise<bo
   const recent = await db.detection.findMany({
     where: { ruleId: rule.id, status: 'ACTIVE', createdAt: { gte: since } },
     select: { detailJson: true },
+    orderBy: { createdAt: 'desc' }, // newest-first: the take cap cannot hide a newer fire
     take: 100,
   })
   return recent.some((d) => {
@@ -317,6 +318,7 @@ export async function evaluateRulesForEvents(events: StoredEvent[], ctx: EngineC
         (rule.selector.correlationKey ?? 'source_id') === 'actor' ? { actor: cv } : { sourceId: cv }
       const rows = await db.event.findMany({
         where: { ...subjectWhere, eventTime: { gte: minT, lte: maxT } },
+        orderBy: { eventTime: 'desc' }, // newest-first: the take cap keeps the MOST RECENT 500
         take: 500, // bounded window population
       })
       const pool = rows.map(toStored).sort((a, b) => a.eventTime.getTime() - b.eventTime.getTime())

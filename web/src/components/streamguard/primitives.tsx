@@ -22,20 +22,25 @@ export function useLang() {
   return useUiStore((s) => s.lang);
 }
 
+/** True when the active language renders RTL (fa) — used to mirror charts etc. */
+export function useIsRtl() {
+  return useUiStore((s) => s.lang) === "fa";
+}
+
 /* ----------------------------- Severity ------------------------------- */
 
 export const SEVERITY_UI: Record<Severity, { hex: string; text: string; chip: string; dot: string; bar: string }> = {
   critical: {
     hex: "#F43F5E",
-    text: "text-rose-600 dark:text-rose-400",
-    chip: "border-rose-600/30 bg-rose-500/10 text-rose-600 dark:border-rose-500/25 dark:text-rose-400",
+    text: "text-rose-700 dark:text-rose-400",
+    chip: "border-rose-600/30 bg-rose-500/10 text-rose-700 dark:border-rose-500/25 dark:text-rose-400",
     dot: "bg-rose-500",
     bar: "bg-rose-500",
   },
   high: {
     hex: "#F97316",
-    text: "text-orange-600 dark:text-orange-400",
-    chip: "border-orange-600/30 bg-orange-500/10 text-orange-600 dark:border-orange-500/25 dark:text-orange-400",
+    text: "text-orange-700 dark:text-orange-400",
+    chip: "border-orange-600/30 bg-orange-500/10 text-orange-700 dark:border-orange-500/25 dark:text-orange-400",
     dot: "bg-orange-500",
     bar: "bg-orange-500",
   },
@@ -47,11 +52,11 @@ export const SEVERITY_UI: Record<Severity, { hex: string; text: string; chip: st
     bar: "bg-amber-400",
   },
   low: {
-    hex: "#2DD4BF",
-    text: "text-teal-600 dark:text-teal-300",
-    chip: "border-teal-500/40 bg-teal-400/10 text-teal-700 dark:border-teal-400/25 dark:text-teal-300",
-    dot: "bg-teal-400",
-    bar: "bg-teal-400",
+    hex: "#84CC16",
+    text: "text-lime-700 dark:text-lime-300",
+    chip: "border-lime-600/30 bg-lime-500/10 text-lime-700 dark:border-lime-400/25 dark:text-lime-300",
+    dot: "bg-lime-500",
+    bar: "bg-lime-500",
   },
   info: {
     hex: "#94A3B8",
@@ -77,7 +82,7 @@ export function SeverityBadge({ severity, className }: { severity: Severity; cla
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-none",
+        "inline-flex w-fit items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11.5px] font-medium leading-none",
         SEVERITY_UI[severity].chip,
         className,
       )}
@@ -120,19 +125,38 @@ export function OriginBadge({ origin, className }: { origin: Origin | string | n
 
 /* ------------------------------- Status -------------------------------- */
 
-const INCIDENT_STATUS_UI: Record<IncidentStatus, string> = {
-  NEW: "border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/25 dark:text-emerald-400",
-  TRIAGED: "border-amber-500/40 bg-amber-400/10 text-amber-700 dark:border-amber-400/25 dark:text-amber-300",
-  INVESTIGATING: "border-teal-500/40 bg-teal-400/10 text-teal-700 dark:border-teal-400/25 dark:text-teal-300",
-  RESOLVED: "border-slate-400/40 bg-slate-400/10 text-slate-600 dark:border-slate-400/25 dark:text-slate-300",
-  CLOSED: "border-border bg-secondary text-muted-foreground",
+/** One distinct hue per incident status (green / amber / violet / slate / zinc) + a leading dot. */
+const INCIDENT_STATUS_UI: Record<IncidentStatus, { chip: string; dot: string }> = {
+  NEW: {
+    chip: "border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/25 dark:text-emerald-400",
+    dot: "bg-emerald-500",
+  },
+  TRIAGED: {
+    chip: "border-amber-500/40 bg-amber-400/10 text-amber-700 dark:border-amber-400/25 dark:text-amber-300",
+    dot: "bg-amber-400",
+  },
+  INVESTIGATING: {
+    chip: "border-violet-600/30 bg-violet-500/10 text-violet-700 dark:border-violet-400/25 dark:text-violet-300",
+    dot: "bg-violet-500",
+  },
+  RESOLVED: {
+    chip: "border-slate-400/40 bg-slate-400/10 text-slate-600 dark:border-slate-400/25 dark:text-slate-300",
+    dot: "bg-slate-400",
+  },
+  CLOSED: {
+    chip: "border-zinc-500/40 bg-zinc-500/10 text-zinc-700 dark:border-zinc-400/25 dark:text-zinc-300",
+    dot: "bg-zinc-500",
+  },
 };
 
 export function IncidentStatusChip({ status, className }: { status: IncidentStatus | string; className?: string }) {
   const T = useT();
-  const cls = INCIDENT_STATUS_UI[status as IncidentStatus] ?? INCIDENT_STATUS_UI.NEW;
+  const ui = INCIDENT_STATUS_UI[status as IncidentStatus] ?? INCIDENT_STATUS_UI.NEW;
   return (
-    <span className={cn("inline-flex w-fit items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium leading-none", cls, className)}>
+    <span
+      className={cn("inline-flex w-fit items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[11.5px] font-medium leading-none", ui.chip, className)}
+    >
+      <span aria-hidden className={cn("inline-block size-1.5 shrink-0 rounded-full", ui.dot)} />
       {T(`incStatus.${status}`)}
     </span>
   );
@@ -151,15 +175,17 @@ export function DetectionStatusChip({ status, className }: { status: string; cla
 }
 
 export function EventStatusChip({ status, className }: { status: string; className?: string }) {
+  const T = useT();
   const cls =
     status === "REJECTED"
       ? "border-rose-600/30 bg-rose-500/10 text-rose-600 dark:border-rose-500/25 dark:text-rose-400"
       : status === "PROCESSED"
         ? "border-teal-500/40 bg-teal-400/10 text-teal-700 dark:border-teal-400/25 dark:text-teal-300"
         : "border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:border-emerald-500/25 dark:text-emerald-400";
+  const label = T(`eventStatus.${status}`);
   return (
-    <span className={cn("inline-flex w-fit items-center rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium leading-none", cls, className)}>
-      {status}
+    <span className={cn("inline-flex w-fit items-center rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] font-medium uppercase leading-none", cls, className)}>
+      {label}
     </span>
   );
 }
@@ -352,7 +378,7 @@ export function Delta({ value, goodWhenDown, suffix, title }: { value: number | 
   const cls = value === 0 ? "text-muted-foreground" : good ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
   const arrow = value === 0 ? "→" : up ? "▲" : "▼";
   return (
-    <span title={title} className={cn("sg-num text-[11px] leading-none", cls)}>
+    <span dir="ltr" title={title} className={cn("sg-num text-[11px] leading-none", cls)}>
       {arrow} {Math.abs(value) < 1 ? value.toFixed(1) : Math.round(value)}%{suffix ?? ""}
     </span>
   );

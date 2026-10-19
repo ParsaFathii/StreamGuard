@@ -3,7 +3,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireRole, requireSession } from '@/lib/auth'
-import { forbidden, invalidFilter, jsonOk, parsePagination, readEnumSingle, readIsoRange, readSafeString, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, invalidFilter, jsonOk, parsePagination, readEnumSingle, readIsoRange, readSafeString, unauthorized } from '@/lib/engine/http'
 import type { Prisma } from '@prisma/client'
 
 // closed sets written by this backend (filters are validated against them)
@@ -22,7 +22,7 @@ export const AUDIT_ACTIONS = [
 ] as const
 const AUDIT_TARGET_TYPES = ['rule', 'incident', 'session', 'settings', 'simulator', 'ingest', 'retention', 'user'] as const
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export const GET = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN')) return forbidden()
@@ -66,4 +66,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     pageSize: page.value.pageSize,
     total,
   })
-}
+})

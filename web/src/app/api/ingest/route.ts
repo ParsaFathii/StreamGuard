@@ -12,13 +12,13 @@
 // <= 4 KB, rate limit settings.rateLimitPerMin per identity (429 + Retry-After).
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { audit, hashIngestKey, requireSession } from '@/lib/auth'
+import { audit, hashIngestKey, requireSession, safeEqual } from '@/lib/auth'
 import { getSettings } from '@/lib/settings'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { MAX_BODY_BYTES } from '@/lib/validation'
 import { ingestEvents, ingestResponse } from '@/lib/engine/pipeline'
 import { countIngest } from '@/lib/engine/proc-stats'
-import { jsonError, jsonOk } from '@/lib/engine/http'
+import { apiRoute, jsonError, jsonOk } from '@/lib/engine/http'
 
 type IngestIdentity =
   | { kind: 'session'; username: string; role: string }
@@ -29,7 +29,7 @@ async function resolveIdentity(req: NextRequest): Promise<{ identity: IngestIden
   if (headerKey) {
     const keys = await db.ingestKey.findMany({ where: { active: true } })
     for (const k of keys) {
-      if (hashIngestKey(k.keyId, headerKey) === k.keyHash) {
+      if (safeEqual(hashIngestKey(k.keyId, headerKey), k.keyHash)) {
         void db.ingestKey.update({ where: { id: k.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined)
         return { identity: { kind: 'key', keyId: k.keyId } }
       }
@@ -42,7 +42,7 @@ async function resolveIdentity(req: NextRequest): Promise<{ identity: IngestIden
   return { identity: { kind: 'session', username: session.user.username, role: session.user.role } }
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const settings = await getSettings()
   const resolved = await resolveIdentity(req)
   if ('error' in resolved) {
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let raw: unknown
   const text = await req.text()
-  if (text.length > MAX_BODY_BYTES) {
+  if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) {
     countIngest(413)
     return jsonError(413, 'PAYLOAD_TOO_LARGE', `Request body exceeds ${MAX_BODY_BYTES} bytes`)
   }
@@ -114,4 +114,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   return jsonOk(ingestResponse(result), 202)
-}
+})

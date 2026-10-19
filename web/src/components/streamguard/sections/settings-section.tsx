@@ -77,13 +77,14 @@ export function SettingsSection({ user }: { user: SessionUser }) {
   const num = (v: string) => Number(v.replace(/[^\d]/g, "")) || 0;
 
   const field = (
+    id: string,
     label: string,
     hint: string,
     node: React.ReactNode,
     editable: boolean,
   ) => (
     <div className="space-y-1.5">
-      <Label className="flex items-center gap-2 text-xs">
+      <Label htmlFor={id} className="flex items-center gap-2 text-xs">
         {label}
         {!editable && (
           <Badge variant="outline" className="border-border font-mono text-[9px] text-muted-foreground">
@@ -199,9 +200,11 @@ export function SettingsSection({ user }: { user: SessionUser }) {
                   />
                 </div>
                 {field(
+                  "sg-ai-provider",
                   T("settings.aiProvider"),
                   "sandbox-zai · ollama (demo: sandbox)",
                   <Input
+                    id="sg-ai-provider"
                     dir="ltr"
                     value={form.aiProvider}
                     disabled={!admin}
@@ -233,9 +236,11 @@ export function SettingsSection({ user }: { user: SessionUser }) {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {field(
+                "sg-corr-window",
                 T("settings.correlationWindow"),
                 T("settings.correlationWindowHint"),
                 <Input
+                  id="sg-corr-window"
                   dir="ltr"
                   type="number"
                   min={10}
@@ -248,9 +253,11 @@ export function SettingsSection({ user }: { user: SessionUser }) {
                 admin,
               )}
               {field(
+                "sg-retention",
                 T("settings.retentionHours"),
                 T("settings.retentionHint"),
                 <Input
+                  id="sg-retention"
                   dir="ltr"
                   type="number"
                   min={1}
@@ -263,9 +270,11 @@ export function SettingsSection({ user }: { user: SessionUser }) {
                 admin,
               )}
               {field(
+                "sg-rate-limit",
                 T("settings.rateLimit"),
                 T("settings.rateLimitHint"),
                 <Input
+                  id="sg-rate-limit"
                   dir="ltr"
                   type="number"
                   min={1}
@@ -278,9 +287,11 @@ export function SettingsSection({ user }: { user: SessionUser }) {
                 admin,
               )}
               {field(
+                "sg-batch-size",
                 T("settings.batchSize"),
                 T("settings.batchSizeHint"),
                 <Input
+                  id="sg-batch-size"
                   dir="ltr"
                   type="number"
                   min={1}
@@ -293,6 +304,7 @@ export function SettingsSection({ user }: { user: SessionUser }) {
                 admin,
               )}
               {field(
+                "sg-language-default",
                 T("settings.languageDefault"),
                 `${T("settings.localOnly")}`,
                 <Select
@@ -304,7 +316,7 @@ export function SettingsSection({ user }: { user: SessionUser }) {
                     saveMutation.mutate({ languageDefault: v as "en" | "fa" });
                   }}
                 >
-                  <SelectTrigger size="sm" className="h-8 text-xs">
+                  <SelectTrigger id="sg-language-default" size="sm" className="h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

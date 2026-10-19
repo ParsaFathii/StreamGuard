@@ -3,9 +3,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireRole, requireSession } from '@/lib/auth'
-import { forbidden, invalidFilter, jsonOk, notFound, parsePagination, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, invalidFilter, jsonOk, notFound, parsePagination, unauthorized } from '@/lib/engine/http'
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+export const GET = apiRoute<{ params: Promise<{ id: string }> }>(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN')) return forbidden()
@@ -32,4 +32,4 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     pageSize: page.value.pageSize,
     total,
   })
-}
+})

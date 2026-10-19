@@ -5,7 +5,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { audit, requireRole, requireSession } from '@/lib/auth'
-import { forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
+import { apiRoute, forbidden, jsonError, jsonOk, unauthorized } from '@/lib/engine/http'
 import { getScenario, mulberry32 } from '@/lib/engine/simulator'
 import { ingestEvents } from '@/lib/engine/pipeline'
 import { notify } from '@/lib/engine/notify'
@@ -19,7 +19,7 @@ function runId(): string {
   return `sim-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export const POST = apiRoute(async (req: NextRequest): Promise<NextResponse> => {
   const session = await requireSession(req)
   if (!session) return unauthorized()
   if (!requireRole(session, 'ADMIN', 'ANALYST')) return forbidden()
@@ -65,4 +65,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     expectedIncidentSeverity: scenario.expectedIncidentSeverity,
     note: scenario.note ?? `Scenario '${scenario.id}' generated ${raws.length} events (seed ${seed}).`,
   })
-}
+})

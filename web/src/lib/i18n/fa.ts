@@ -187,6 +187,8 @@ export const fa: Dict = {
     runScenario: "اجرای سناریوی شبیه‌ساز",
     generatingActivity: "در حال تولید…",
     noPriorData: "دادهٔ قبلی موجود نیست",
+    copyJson: "کپی JSON",
+    moreActions: "عملیات بیشتر",
   },
   sev: {
     critical: "بحرانی",
@@ -196,9 +198,9 @@ export const fa: Dict = {
     info: "اطلاعاتی",
   },
   eventStatus: {
-    VALIDATED: "VALIDATED",
-    REJECTED: "REJECTED",
-    PROCESSED: "PROCESSED",
+    VALIDATED: "تأییدشده",
+    REJECTED: "ردشده",
+    PROCESSED: "پردازش‌شده",
   },
   incStatus: {
     NEW: "جدید",
@@ -367,6 +369,7 @@ export const fa: Dict = {
     bulkMove: "انتقال به",
     bulkApply: "اعمال",
     clearSelection: "پاک‌کردن",
+    selectIncident: "انتخاب {id}",
     openIncident: "بازکردن بررسی",
     statusColumn: "وضعیت",
     sortBy: "مرتب‌سازی",
@@ -437,6 +440,8 @@ export const fa: Dict = {
     anomalyThreshold: "آستانهٔ ناهنجاری",
     anomalyTimeline: "خط زمانی ناهنجاری — ۱۲۰ دقیقهٔ اخیر",
     rate: "نرخ رخداد",
+    rateAxis: "رخداد/دقیقه",
+    scoreAxis: "امتیاز ناهنجاری",
     iforestScore: "امتیاز iForest",
     zscore: "امتیاز Z",
     anomaly: "ناهنجاری",
