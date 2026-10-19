@@ -47,7 +47,11 @@ bench:
 e2e: build
 	@set -e; \
 	  PORT=8091 INGEST_KEY=sg-demo-ingest-key-2026 services/ingestor/bin/ingestor & \
-	  PID=$$!; sleep 2; \
+	  PID=$$!; trap 'kill $$PID 2>/dev/null || true' EXIT; \
+	  ok=0; for i in $$(seq 1 20); do \
+	    if curl -sf http://127.0.0.1:8091/api/health > /dev/null 2>&1; then ok=1; break; fi; sleep 0.5; \
+	  done; \
+	  if [ "$$ok" != "1" ]; then echo "E2E FAIL: service did not become healthy"; exit 2; fi; \
 	  curl -sf http://127.0.0.1:8091/api/health; echo; \
 	  services/ingestor/bin/sggen --scenario brute_force --url http://127.0.0.1:8091 --key sg-demo-ingest-key-2026; \
 	  sleep 2; \
