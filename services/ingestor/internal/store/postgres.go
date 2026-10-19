@@ -368,9 +368,8 @@ func queryEventsSQL(q EventQuery) (string, []any) {
 	if limit <= 0 || limit > 5000 {
 		limit = 5000
 	}
-	conds = append(conds, add("TRUE LIMIT %s", limit))
 	return "SELECT " + eventCols + " FROM events WHERE " + strings.Join(conds[1:], " AND ") +
-		" ORDER BY event_time ASC, event_id ASC", args
+		" ORDER BY event_time ASC, event_id ASC LIMIT " + fmt.Sprint(limit), args
 }
 
 // CountEventsSince implements Store.
@@ -1074,8 +1073,10 @@ func (p *PostgresStore) IncidentEvents(ctx context.Context, incidentID string, p
 	if pageSize > 10000 {
 		pageSize = 10000
 	}
+	// eventCols must be e.-qualified here: event_id exists in BOTH tables.
+	qCols := "e.event_id, e.schema_version, e.event_time, e.source_id, e.source_type, e.severity, e.category, e.message, COALESCE(e.attributes, 'null'::jsonb), e.correlation_id, e.trace_id, e.actor, e.origin, e.ingest_time, e.status, e.rejection_reason, e.latency_ms"
 	rows, err := p.pool.Query(ctx,
-		"SELECT "+eventCols+", ie.late FROM incident_events ie JOIN events e ON e.event_id = ie.event_id WHERE ie.incident_id = $1 ORDER BY e.event_time ASC, e.event_id ASC LIMIT $2 OFFSET $3",
+		"SELECT "+qCols+", ie.late FROM incident_events ie JOIN events e ON e.event_id = ie.event_id WHERE ie.incident_id = $1 ORDER BY e.event_time ASC, e.event_id ASC LIMIT $2 OFFSET $3",
 		incidentID, pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, 0, err
